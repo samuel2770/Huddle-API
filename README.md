@@ -57,6 +57,27 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Authentication & Database Migrations
+
+### Environment Variables
+Configure the following environment variables in `.env` (refer to `.env.example`):
+- `JWT_ACCESS_SECRET`: Secret key used to sign access tokens (~15m TTL).
+- `JWT_REFRESH_SECRET`: Secret key used for refresh tokens (~7d TTL).
+- `JWT_ACCESS_TTL`: Access token expiration duration (e.g. `15m`).
+- `JWT_REFRESH_TTL`: Refresh token expiration duration (e.g. `7d`).
+- `THROTTLE_TTL`: Rate limit window in milliseconds (e.g. `60000`).
+- `THROTTLE_LIMIT`: Maximum number of requests allowed per window (e.g. `10`).
+
+### Running Migrations
+TypeORM schema migrations manage the database tables (`users`, `refresh_tokens`, `password_reset_tokens`).
+```bash
+# Run pending migrations against PostgreSQL
+$ npm run migration:run
+
+# Revert the last applied migration
+$ npm run migration:revert
+```
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
