@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { User } from './users/entities/user.entity.js';
 import { Workspace } from './workspaces/entities/workspace.entity.js';
@@ -41,5 +42,3 @@ export const AppDataSource = new DataSource({
   logging: process.env.DB_LOGGING === 'true',
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
-
-export default AppDataSource;
