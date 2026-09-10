@@ -1,12 +1,14 @@
 import { DataSource } from 'typeorm';
 import { User } from './users/entities/user.entity.js';
 import { Workspace } from './workspaces/entities/workspace.entity.js';
+import { WorkspaceMember } from './workspaces/entities/workspace-member.entity.js';
 import { Channel } from './channels/entities/channel.entity.js';
 import { ChannelMember } from './channels/entities/channel-member.entity.js';
 import { Message } from './messages/entities/message.entity.js';
 import { Attachment } from './messages/entities/attachment.entity.js';
 import { RefreshToken } from './auth/entities/refresh-token.entity.js';
 import { PasswordResetToken } from './auth/entities/password-reset-token.entity.js';
+import { Invite } from './invites/entities/invite.entity.js';
 import { CreateUsersTable1725880000000 } from '../migrations/1725880000000-create-users-table.js';
 import { CreateRefreshTokensTable1725880000001 } from '../migrations/1725880000001-create-refresh-tokens-table.js';
 import { CreatePasswordResetTokensTable1725880000002 } from '../migrations/1725880000002-create-password-reset-tokens-table.js';
@@ -21,12 +23,14 @@ export const AppDataSource = new DataSource({
   entities: [
     User,
     Workspace,
+    WorkspaceMember,
     Channel,
     ChannelMember,
     Message,
     Attachment,
     RefreshToken,
     PasswordResetToken,
+    Invite,
   ],
   migrations: [
     CreateUsersTable1725880000000,

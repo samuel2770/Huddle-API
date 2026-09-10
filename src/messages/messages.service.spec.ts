@@ -7,7 +7,7 @@ import {
 import { MessagesService } from './messages.service.js';
 import { Message } from './entities/message.entity.js';
 import { Attachment } from './entities/attachment.entity.js';
-import { Channel, ChannelType } from '../channels/entities/channel.entity.js';
+import { Channel } from '../channels/entities/channel.entity.js';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
 

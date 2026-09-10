@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
 import { Channel } from '../../channels/entities/channel.entity.js';
+import { WorkspaceMember } from './workspace-member.entity.js';
 
 @Entity('workspaces')
 export class Workspace {
@@ -36,4 +37,7 @@ export class Workspace {
 
   @OneToMany(() => Channel, (channel) => channel.workspace)
   channels: Channel[];
+
+  @OneToMany(() => WorkspaceMember, (member) => member.workspace)
+  members: WorkspaceMember[];
 }

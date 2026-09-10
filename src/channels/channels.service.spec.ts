@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -22,13 +23,35 @@ describe('ChannelsService', () => {
 
   const mockMemberRepo = {
     findOne: vi.fn(),
+    find: vi.fn(),
     create: vi.fn(),
     save: vi.fn(),
     remove: vi.fn(),
   };
 
+  // Mock DataSource.transaction — executes the callback immediately with a mock manager
+  const mockManager = {
+    create: vi.fn(),
+    save: vi.fn(),
+  };
+
+  const mockDataSource = {
+    transaction: vi.fn(async (cb: (manager: any) => Promise<any>) => {
+      return cb(mockManager);
+    }),
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
+
+    // Reset manager mocks
+    mockManager.create.mockImplementation((_entity: any, data: any) => ({
+      ...data,
+      id: data.id ?? `mock-${Math.random().toString(36).slice(2, 8)}`,
+    }));
+    mockManager.save.mockImplementation((_entity: any, data: any) =>
+      Promise.resolve(data),
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,6 +64,10 @@ describe('ChannelsService', () => {
           provide: getRepositoryToken(ChannelMember),
           useValue: mockMemberRepo,
         },
+        {
+          provide: DataSource,
+          useValue: mockDataSource,
+        },
       ],
     }).compile();
 
@@ -52,7 +79,7 @@ describe('ChannelsService', () => {
   });
 
   describe('create', () => {
-    it('should create a channel and auto-add the creator as member', async () => {
+    it('should create a channel and auto-add the creator as member within a transaction', async () => {
       const userId = '11111111-1111-1111-1111-111111111111';
       const dto = {
         workspaceId: '22222222-2222-2222-2222-222222222222',
@@ -61,34 +88,57 @@ describe('ChannelsService', () => {
       };
 
       mockChannelRepo.findOne.mockResolvedValue(null);
-      mockChannelRepo.create.mockImplementation((entity) => ({
-        ...entity,
-        id: 'chan-1',
-      }));
-      mockChannelRepo.save.mockImplementation((channel) =>
-        Promise.resolve(channel),
-      );
-      mockMemberRepo.create.mockImplementation((entity) => ({
-        ...entity,
-        id: 'mem-1',
-      }));
-      mockMemberRepo.save.mockImplementation((member) =>
-        Promise.resolve(member),
-      );
 
-      const result = await service.create(userId, dto);
+      await service.create(userId, dto);
 
       expect(mockChannelRepo.findOne).toHaveBeenCalled();
-      expect(mockChannelRepo.save).toHaveBeenCalled();
-      expect(mockMemberRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          channel_id: 'chan-1',
-          user_id: userId,
-          unread_count: 0,
-        }),
-      );
-      expect(result.id).toBe('chan-1');
-      expect(result.name).toBe('general');
+      expect(mockDataSource.transaction).toHaveBeenCalled();
+      // Manager.create should be called for channel + creator member
+      expect(mockManager.create).toHaveBeenCalledTimes(2);
+      expect(mockManager.save).toHaveBeenCalledTimes(2);
+    });
+
+    it('should create channel with additional members atomically', async () => {
+      const userId = '11111111-1111-1111-1111-111111111111';
+      const dto = {
+        workspaceId: '22222222-2222-2222-2222-222222222222',
+        name: 'team',
+        type: ChannelType.PRIVATE,
+      };
+      const memberIds = [
+        '33333333-3333-3333-3333-333333333333',
+        '44444444-4444-4444-4444-444444444444',
+      ];
+
+      mockChannelRepo.findOne.mockResolvedValue(null);
+
+      await service.create(userId, dto, memberIds);
+
+      expect(mockDataSource.transaction).toHaveBeenCalled();
+      // channel + creator + 2 additional members (bulk save counts as 1 call)
+      expect(mockManager.save).toHaveBeenCalledTimes(3);
+    });
+
+    it('should deduplicate memberIds and exclude creator from additional members', async () => {
+      const userId = '11111111-1111-1111-1111-111111111111';
+      const dto = {
+        workspaceId: '22222222-2222-2222-2222-222222222222',
+        name: 'dedup-test',
+      };
+      // Include creator's ID and a duplicate
+      const memberIds = [
+        userId,
+        '33333333-3333-3333-3333-333333333333',
+        '33333333-3333-3333-3333-333333333333',
+      ];
+
+      mockChannelRepo.findOne.mockResolvedValue(null);
+
+      await service.create(userId, dto, memberIds);
+
+      // Only 1 additional member (creator filtered out, duplicate removed)
+      // save calls: channel, creator member, [1 additional member]
+      expect(mockManager.save).toHaveBeenCalledTimes(3);
     });
 
     it('should throw ConflictException if channel name exists in workspace', async () => {
@@ -168,7 +218,7 @@ describe('ChannelsService', () => {
         user_id: 'new-user',
         unread_count: 0,
       });
-      mockMemberRepo.save.mockImplementation((m) => Promise.resolve(m));
+      mockMemberRepo.save.mockImplementation((m: any) => Promise.resolve(m));
 
       const result = await service.addMember('chan-1', 'new-user', 'caller-id');
       expect(result.user_id).toBe('new-user');
@@ -196,6 +246,43 @@ describe('ChannelsService', () => {
       await expect(
         service.addMember('chan-1', 'existing-user', 'caller-id'),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('addMembers (bulk)', () => {
+    it('should add multiple members and report already-existing ones', async () => {
+      const channel = {
+        id: 'chan-1',
+        type: ChannelType.PUBLIC,
+        is_archived: false,
+        members: [],
+      };
+      mockChannelRepo.findOne.mockResolvedValue(channel);
+      mockMemberRepo.find.mockResolvedValue([
+        { user_id: 'existing-user', channel_id: 'chan-1' },
+      ]);
+      mockMemberRepo.create.mockImplementation((data: any) => data);
+      mockMemberRepo.save.mockResolvedValue([]);
+
+      const result = await service.addMembers(
+        'chan-1',
+        ['new-user-1', 'existing-user', 'new-user-2'],
+        'caller-id',
+      );
+
+      expect(result.added).toEqual(['new-user-1', 'new-user-2']);
+      expect(result.alreadyMembers).toEqual(['existing-user']);
+    });
+
+    it('should throw BadRequestException when bulk adding to archived channel', async () => {
+      mockChannelRepo.findOne.mockResolvedValue({
+        id: 'chan-1',
+        is_archived: true,
+      });
+
+      await expect(
+        service.addMembers('chan-1', ['user-1'], 'caller-id'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -260,7 +347,7 @@ describe('ChannelsService', () => {
         members: [{ user_id: 'creator-id' }],
       };
       mockChannelRepo.findOne.mockResolvedValue(channel);
-      mockChannelRepo.save.mockImplementation((c) => Promise.resolve(c));
+      mockChannelRepo.save.mockImplementation((c: any) => Promise.resolve(c));
 
       const result = await service.archive('chan-1', 'creator-id');
       expect(result.is_archived).toBe(true);

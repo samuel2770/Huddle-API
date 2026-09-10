@@ -13,13 +13,14 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
     const ipTracker = req.ips?.length
       ? req.ips[0]
       : (req.ip ?? req.socket?.remoteAddress ?? '127.0.0.1');
-    const ipKey = this.generateKey(context, ipTracker, throttler.name);
+    const throttlerName = throttler.name ?? 'default';
+    const ipKey = this.generateKey(context, ipTracker, throttlerName);
     const ipRecord = await this.storageService.increment(
       ipKey,
       ttl,
       limit,
       blockDuration,
-      throttler.name,
+      throttlerName,
     );
 
     if (ipRecord.totalHits > limit) {
@@ -43,13 +44,17 @@ export class CustomThrottlerGuard extends ThrottlerGuard {
       rawEmail.trim().length > 0
     ) {
       const emailTracker = `email:${rawEmail.trim().toLowerCase()}`;
-      const emailKey = this.generateKey(context, emailTracker, throttler.name);
+      const emailKey = this.generateKey(
+        context,
+        emailTracker,
+        throttlerName,
+      );
       const emailRecord = await this.storageService.increment(
         emailKey,
         ttl,
         limit,
         blockDuration,
-        throttler.name,
+        throttlerName,
       );
 
       if (emailRecord.totalHits > limit) {

@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Channel, ChannelType } from './entities/channel.entity.js';
 import { ChannelMember } from './entities/channel-member.entity.js';
 import { CreateChannelDto } from './dto/create-channel.dto.js';
@@ -19,9 +19,22 @@ export class ChannelsService {
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
     private readonly memberRepository: Repository<ChannelMember>,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async create(userId: string, dto: CreateChannelDto): Promise<Channel> {
+  /**
+   * Creates a channel and auto-adds the creator as the first member.
+   * If additional memberIds are provided (from the "Add team members" step),
+   * they are added atomically within the same transaction.
+   *
+   * Per spec: "Channel created successfully" only returns after both the
+   * channel row and its member associations are successfully persisted.
+   */
+  async create(
+    userId: string,
+    dto: CreateChannelDto,
+    memberIds?: string[],
+  ): Promise<Channel> {
     const existing = await this.channelRepository.findOne({
       where: {
         workspace_id: dto.workspaceId,
@@ -35,26 +48,46 @@ export class ChannelsService {
       );
     }
 
-    const channel = this.channelRepository.create({
-      workspace_id: dto.workspaceId,
-      name: dto.name.trim(),
-      type: dto.type ?? ChannelType.PUBLIC,
-      created_by: userId,
-      is_archived: false,
+    return this.dataSource.transaction(async (manager) => {
+      const channel = manager.create(Channel, {
+        workspace_id: dto.workspaceId,
+        name: dto.name.trim(),
+        type: dto.type ?? ChannelType.PUBLIC,
+        created_by: userId,
+        is_archived: false,
+      });
+
+      const savedChannel = await manager.save(Channel, channel);
+
+      // Always add the creator as the first member
+      const creatorMember = manager.create(ChannelMember, {
+        channel_id: savedChannel.id,
+        user_id: userId,
+        unread_count: 0,
+        joined_at: new Date(),
+      });
+      await manager.save(ChannelMember, creatorMember);
+
+      // Add additional members from the "Add team members" step
+      if (memberIds && memberIds.length > 0) {
+        const uniqueIds = [...new Set(memberIds)].filter(
+          (id) => id !== userId,
+        );
+        if (uniqueIds.length > 0) {
+          const additionalMembers = uniqueIds.map((memberId) =>
+            manager.create(ChannelMember, {
+              channel_id: savedChannel.id,
+              user_id: memberId,
+              unread_count: 0,
+              joined_at: new Date(),
+            }),
+          );
+          await manager.save(ChannelMember, additionalMembers);
+        }
+      }
+
+      return savedChannel;
     });
-
-    const savedChannel = await this.channelRepository.save(channel);
-
-    // Automatically add the creator as the first member of the channel
-    const creatorMember = this.memberRepository.create({
-      channel_id: savedChannel.id,
-      user_id: userId,
-      unread_count: 0,
-      joined_at: new Date(),
-    });
-    await this.memberRepository.save(creatorMember);
-
-    return savedChannel;
   }
 
   async findAll(userId: string, query: QueryChannelsDto): Promise<Channel[]> {
@@ -163,6 +196,75 @@ export class ChannelsService {
     });
 
     return this.memberRepository.save(member);
+  }
+
+  /**
+   * Bulk add multiple members to a channel. Used by both:
+   * - Channel creation flow ("Add team members" step)
+   * - In-channel "Add team members" modal
+   * 
+   * Per spec: "add member should be one backend implementation used by
+   * both the channel-creation flow and the in-channel modal"
+   */
+  async addMembers(
+    channelId: string,
+    userIds: string[],
+    callerId: string,
+  ): Promise<{ added: string[]; alreadyMembers: string[] }> {
+    const channel = await this.channelRepository.findOne({
+      where: { id: channelId },
+      relations: { members: true },
+    });
+
+    if (!channel) {
+      throw new NotFoundException(`Channel with ID ${channelId} not found`);
+    }
+
+    if (channel.is_archived) {
+      throw new BadRequestException(
+        'Cannot add members to an archived channel',
+      );
+    }
+
+    if (channel.type !== ChannelType.PUBLIC) {
+      const isCallerMember = channel.members?.some(
+        (m) => m.user_id === callerId,
+      );
+      const isCallerCreator = channel.created_by === callerId;
+      if (!isCallerMember && !isCallerCreator) {
+        throw new ForbiddenException(
+          'You must be a member to add others to this channel',
+        );
+      }
+    }
+
+    const uniqueIds = [...new Set(userIds)];
+
+    // Find which users are already members
+    const existingMembers = await this.memberRepository.find({
+      where: {
+        channel_id: channelId,
+        user_id: In(uniqueIds),
+      },
+    });
+    const existingUserIds = new Set(existingMembers.map((m) => m.user_id));
+
+    const toAdd = uniqueIds.filter((id) => !existingUserIds.has(id));
+    const alreadyMembers = uniqueIds.filter((id) => existingUserIds.has(id));
+
+    if (toAdd.length > 0) {
+      const newMembers = toAdd.map((userId) =>
+        this.memberRepository.create({
+          channel_id: channelId,
+          user_id: userId,
+          unread_count: 0,
+          joined_at: new Date(),
+        }),
+      );
+      await this.memberRepository.save(newMembers);
+    }
+
+    return { added: toAdd, alreadyMembers };
   }
 
   async removeMember(

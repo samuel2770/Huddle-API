@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, type JwtModuleOptions } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { UsersService } from '../users/users.service.js';
@@ -22,6 +22,10 @@ import { ResetPasswordDto } from './dto/reset-password.dto.js';
 // Pre-computed argon2 hash for constant-time comparison on unknown email to prevent timing-based user enumeration
 const DUMMY_HASH =
   '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQxMjM0NTY3OA$9lJ51PjPsk+0Zg86aW7nIuR5O6n9h8f0b7v5d4c3b2a';
+
+type JwtExpiresIn = NonNullable<
+  JwtModuleOptions['signOptions']
+>['expiresIn'];
 
 @Injectable()
 export class AuthService {
@@ -86,7 +90,7 @@ export class AuthService {
     const accessTtl = process.env.JWT_ACCESS_TTL ?? '15m';
     const accessToken = this.jwtService.sign(
       { sub: user.id, email: user.email },
-      { expiresIn: accessTtl },
+      { expiresIn: accessTtl as JwtExpiresIn },
     );
     const accessTokenExpiresIn = 900; // 15 minutes in seconds
 
@@ -163,7 +167,7 @@ export class AuthService {
     const accessTtl = process.env.JWT_ACCESS_TTL ?? '15m';
     const accessToken = this.jwtService.sign(
       { sub: user.id, email: user.email },
-      { expiresIn: accessTtl },
+      { expiresIn: accessTtl as JwtExpiresIn },
     );
 
     return {

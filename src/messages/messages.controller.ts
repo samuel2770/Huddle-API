@@ -10,21 +10,31 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { MessagesService } from './messages.service.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
 import { UpdateMessageDto } from './dto/update-message.dto.js';
 import { QueryMessagesDto } from './dto/query-messages.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import { MockAuthGuard } from '../common/guards/mock-auth.guard.js';
-// import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
+@ApiTags('Messages')
+@ApiBearerAuth()
 @Controller('channels/:channelId/messages')
-// @UseGuards(JwtAuthGuard)
-@UseGuards(MockAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
   @Post()
+  @ApiOperation({ summary: 'Send a message to a channel' })
+  @ApiResponse({ status: 201, description: 'Message sent successfully' })
+  @ApiResponse({ status: 400, description: 'Validation failed or channel archived' })
+  @ApiResponse({ status: 403, description: 'Not a member of this channel' })
   async create(
     @Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
     @CurrentUser('id') userId: string,
@@ -34,6 +44,9 @@ export class MessagesController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Get paginated messages for a channel' })
+  @ApiResponse({ status: 200, description: 'Paginated message list' })
+  @ApiResponse({ status: 404, description: 'Channel not found' })
   async findAll(
     @Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
     @CurrentUser('id') userId: string,
@@ -43,6 +56,10 @@ export class MessagesController {
   }
 
   @Patch(':messageId')
+  @ApiOperation({ summary: 'Edit a message (within edit window)' })
+  @ApiResponse({ status: 200, description: 'Message updated' })
+  @ApiResponse({ status: 403, description: 'Can only edit own messages' })
+  @ApiResponse({ status: 400, description: 'Edit window expired or message deleted' })
   async update(
     @Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
     @Param('messageId', new ParseUUIDPipe({ version: '4' })) messageId: string,
@@ -53,6 +70,9 @@ export class MessagesController {
   }
 
   @Delete(':messageId')
+  @ApiOperation({ summary: 'Soft-delete a message' })
+  @ApiResponse({ status: 200, description: 'Message deleted' })
+  @ApiResponse({ status: 403, description: 'Can only delete own messages' })
   async remove(
     @Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
     @Param('messageId', new ParseUUIDPipe({ version: '4' })) messageId: string,
@@ -62,6 +82,8 @@ export class MessagesController {
   }
 
   @Patch(':messageId/read')
+  @ApiOperation({ summary: 'Mark messages as read up to a given message' })
+  @ApiResponse({ status: 200, description: 'Read marker updated' })
   async markRead(
     @Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
     @Param('messageId', new ParseUUIDPipe({ version: '4' })) messageId: string,

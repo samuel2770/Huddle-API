@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, type JwtModuleOptions } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
@@ -14,12 +14,14 @@ import { UsersModule } from '../users/users.module.js';
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
-      useFactory: () => ({
+      useFactory: (): JwtModuleOptions => ({
         secret:
           process.env.JWT_ACCESS_SECRET ??
           'your-access-secret-change-in-production',
         signOptions: {
-          expiresIn: process.env.JWT_ACCESS_TTL ?? '15m',
+          expiresIn: (process.env.JWT_ACCESS_TTL ?? '15m') as NonNullable<
+            JwtModuleOptions['signOptions']
+          >['expiresIn'],
         },
       }),
     }),
