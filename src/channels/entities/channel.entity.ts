@@ -8,6 +8,7 @@ import {
   OneToMany,
   JoinColumn,
   Unique,
+  type Relation,
 } from 'typeorm';
 import { Workspace } from '../../workspaces/entities/workspace.entity.js';
 import { User } from '../../users/entities/user.entity.js';
@@ -33,7 +34,7 @@ export class Channel {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'workspace_id' })
-  workspace: Workspace;
+  workspace: Relation<Workspace>;
 
   @Column({ type: 'varchar', length: 80 })
   name: string;
@@ -50,7 +51,7 @@ export class Channel {
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'created_by' })
-  creator: User;
+  creator: Relation<User>;
 
   @Column({ type: 'boolean', default: false })
   is_archived: boolean;

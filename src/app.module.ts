@@ -51,6 +51,7 @@ import { Invite } from './invites/entities/invite.entity.js';
       autoLoadEntities: true,
       synchronize: process.env.DB_SYNCHRONIZE !== 'false',
       logging: process.env.DB_LOGGING === 'true',
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     }),
     ThrottlerModule.forRoot([
       {

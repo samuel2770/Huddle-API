@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  type Relation,
 } from 'typeorm';
 import { Channel } from './channel.entity.js';
 import { User } from '../../users/entities/user.entity.js';
@@ -24,7 +25,7 @@ export class ChannelMember {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'channel_id' })
-  channel: Channel;
+  channel: Relation<Channel>;
 
   @Column({ type: 'uuid' })
   user_id: string;
@@ -33,14 +34,14 @@ export class ChannelMember {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user: Relation<User>;
 
   @Column({ type: 'uuid', nullable: true })
   last_read_message_id: string | null;
 
   @ManyToOne(() => Message, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'last_read_message_id' })
-  lastReadMessage: Message | null;
+  lastReadMessage: Relation<Message> | null;
 
   @Column({ type: 'int', default: 0 })
   unread_count: number;

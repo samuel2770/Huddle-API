@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import type { Redis } from 'ioredis';
-import { REDIS_CLIENT } from './redis.module.js';
+import { REDIS_CLIENT } from './redis.constants.js';
 
 const PRESENCE_PREFIX = 'presence:';
 const PRESENCE_TTL_SECONDS = 300; // 5 minutes — refreshed on activity

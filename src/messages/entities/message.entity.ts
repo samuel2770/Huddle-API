@@ -8,6 +8,7 @@ import {
   OneToMany,
   JoinColumn,
   Index,
+  type Relation,
 } from 'typeorm';
 import { Channel } from '../../channels/entities/channel.entity.js';
 import { User } from '../../users/entities/user.entity.js';
@@ -26,7 +27,7 @@ export class Message {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'channel_id' })
-  channel: Channel;
+  channel: Relation<Channel>;
 
   @Column({ type: 'uuid' })
   sender_id: string;
@@ -35,7 +36,7 @@ export class Message {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'sender_id' })
-  sender: User;
+  sender: Relation<User>;
 
   @Column({ type: 'text', nullable: true })
   content: string | null;
@@ -48,7 +49,7 @@ export class Message {
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'reply_to_message_id' })
-  replyTo: Message | null;
+  replyTo: Relation<Message> | null;
 
   @OneToMany(() => Message, (message) => message.replyTo)
   replies: Message[];

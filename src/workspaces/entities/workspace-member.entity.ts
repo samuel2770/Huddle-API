@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  type Relation,
 } from 'typeorm';
 import { Workspace } from './workspace.entity.js';
 import { User } from '../../users/entities/user.entity.js';
@@ -29,14 +30,14 @@ export class WorkspaceMember {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'workspace_id' })
-  workspace: Workspace;
+  workspace: Relation<Workspace>;
 
   @Column({ type: 'uuid' })
   user_id: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user: Relation<User>;
 
   @Column({
     type: 'enum',

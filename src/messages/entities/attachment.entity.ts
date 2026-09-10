@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  type Relation,
 } from 'typeorm';
 import { Message } from './message.entity.js';
 
@@ -19,7 +20,7 @@ export class Attachment {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'message_id' })
-  message: Message;
+  message: Relation<Message>;
 
   @Column({ type: 'varchar' })
   url: string;

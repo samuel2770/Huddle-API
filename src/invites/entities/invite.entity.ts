@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  type Relation,
 } from 'typeorm';
 import { Workspace } from '../../workspaces/entities/workspace.entity.js';
 import { User } from '../../users/entities/user.entity.js';
@@ -28,14 +29,14 @@ export class Invite {
 
   @ManyToOne(() => Workspace, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'workspace_id' })
-  workspace: Workspace;
+  workspace: Relation<Workspace>;
 
   @Column({ type: 'uuid' })
   inviter_id: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'inviter_id' })
-  inviter: User;
+  inviter: Relation<User>;
 
   @Column({ type: 'varchar' })
   email: string;

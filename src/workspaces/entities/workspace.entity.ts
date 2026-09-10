@@ -6,6 +6,7 @@ import {
   OneToMany,
   ManyToOne,
   JoinColumn,
+  type Relation,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
 import { Channel } from '../../channels/entities/channel.entity.js';
@@ -30,7 +31,7 @@ export class Workspace {
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'owner_id' })
-  owner: User;
+  owner: Relation<User>;
 
   @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;
