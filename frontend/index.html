@@ -1,1022 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign Up — Huddle</title>
-  <meta name="description" content="Set up Huddle for your team. Real-time collaboration, channels and messaging." />
-  <link rel="icon" type="image/svg+xml" href="images/logo.svg" />
-  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-
-  <style>
-    /* ==========================================================
-       TOKENS
-    ========================================================== */
-    :root {
-      --orange      : #FF6A00;
-      --orange-h    : #E55F00;
-      --navy        : #1D2939;
-      --text-head   : #101828;
-      --text-sub    : #667085;
-      --text-label  : #344054;
-      --text-ph     : #98A2B3;
-      --text-icon   : #344054;       /* dark slate icon matching screenshot */
-      --asterisk    : #4379EE;       /* blue asterisk */
-      --border-def  : #D0D5DD;
-      --border-foc  : #FF6A00;
-      --chip-border : #A6F4C5;       /* soft green chip border */
-      --chip-text   : #027A48;       /* green chip text */
-      --chip-bg     : #ECFDF3;       /* soft pastel green */
-      --btn-off-bg  : #F2F4F7;
-      --btn-off-txt : #98A2B3;
-      --footer-txt  : #667085;
-      --font-sans   : 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      --font-serif  : 'DM Serif Display', Georgia, 'Times New Roman', serif;
-      --r-input     : 12px;
-      --r-btn       : 12px;
-      --ease        : 0.15s ease;
-    }
-
-    /* ==========================================================
-       RESET
-    ========================================================== */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      height: 100%;
-      font-family: var(--font-sans);
-      background: #FFFFFF;
-      color: var(--text-head);
-      -webkit-font-smoothing: antialiased;
-    }
-    a { text-decoration: none; }
-    button { cursor: pointer; font-family: inherit; }
-
-    /* ==========================================================
-       PAGE SHELL — Desktop 50/50 split
-    ========================================================== */
-    .page {
-      display: flex;
-      min-height: 100vh;
-      background: #FFFFFF;
-    }
-
-    /* ── LEFT PANE ── */
-    .left {
-      flex: 0 0 50%;
-      max-width: 50%;
-      display: flex;
-      flex-direction: column;
-      padding: 36px 64px 28px 64px;
-      min-height: 100vh;
-    }
-
-    /* ── RIGHT PANE ── */
-    .right {
-      flex: 0 0 50%;
-      max-width: 50%;
-      padding: 14px 16px 14px 0;
-      position: sticky;
-      top: 0;
-      height: 100vh;
-    }
-
-    .hero-card {
-      width: 100%;
-      height: 100%;
-      border-radius: 24px;
-      overflow: hidden;
-      background: #F2F4F7;
-    }
-
-    .hero-card img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center top;
-      display: block;
-    }
-
-    /* ==========================================================
-       TOPBAR
-    ========================================================== */
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-      width: 100%;
-    }
-
-    /* Logo */
-    .logo {
-      display: inline-flex;
-      align-items: center;
-      gap: 0;
-      font-family: var(--font-sans);
-      font-weight: 800;
-      font-size: 24px;
-      letter-spacing: -0.5px;
-      color: var(--navy);
-      line-height: 1;
-    }
-
-    .logo-dot {
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      background: var(--orange);
-      border-radius: 50%;
-      margin-left: 2px;
-      margin-bottom: -1px;
-      flex-shrink: 0;
-    }
-
-    /* Locale */
-    .locale {
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.35px;
-      color: var(--text-label);
-      user-select: none;
-    }
-
-    /* ==========================================================
-       CONTENT (sits vertically centred between topbar & footer)
-    ========================================================== */
-    .content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 28px 0 20px;
-      width: 100%;
-      max-width: 440px;     /* generous width so 3 chips fit on line 1 */
-      margin: 0 auto;
-    }
-
-    /* ==========================================================
-       STEP SYSTEM  (only .active is visible)
-    ========================================================== */
-    .step { display: none; }
-    .step.active { display: block; }
-
-    /* ==========================================================
-       HEADING BLOCK
-    ========================================================== */
-    .hdg {
-      font-family: var(--font-serif);
-      font-size: 38px;
-      font-weight: 400;
-      line-height: 1.15;
-      color: var(--text-head);
-      letter-spacing: -0.3px;
-      margin-bottom: 6px;
-    }
-
-    .sub {
-      font-size: 15px;
-      color: var(--text-sub);
-      line-height: 1.45;
-      margin-bottom: 26px;
-    }
-
-    /* ==========================================================
-       FORM
-    ========================================================== */
-    .form { display: flex; flex-direction: column; gap: 16px; }
-
-    /* Field group */
-    .field { display: flex; flex-direction: column; gap: 6px; }
-
-    /* Label */
-    .lbl {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-label);
-      line-height: 1.2;
-    }
-
-    .lbl .ast {
-      color: var(--asterisk);
-      font-size: 14px;
-      line-height: 1;
-    }
-
-    /* Input wrapper */
-    .inp-row {
-      display: flex;
-      align-items: center;
-      height: 52px;
-      padding: 0 16px;
-      gap: 14px;
-      border: 1px solid var(--border-def);
-      border-radius: 14px;
-      background: #FFFFFF;
-      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
-      transition: border-color var(--ease), box-shadow var(--ease);
-    }
-
-    .inp-row:focus-within {
-      border-color: var(--orange);
-      box-shadow: 0 0 0 3px rgba(255, 106, 0, 0.12), 0 1px 2px rgba(16, 24, 40, 0.05);
-    }
-
-    /* Icons inside input */
-    .ico {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-icon);
-      flex-shrink: 0;
-    }
-
-    .ico.left {
-      width: 18px;
-      height: 18px;
-    }
-
-    .ico.right {
-      width: 22px;
-      height: 22px;
-      background: none;
-      border: none;
-      padding: 0;
-      cursor: pointer;
-      color: var(--text-icon);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: color var(--ease);
-      margin-left: auto;
-    }
-
-    .ico.right:hover {
-      color: var(--text-head);
-    }
-
-    /* Actual <input> */
-    .inp {
-      flex: 1;
-      width: 100%;
-      height: 100%;
-      min-width: 0;
-      border: none;
-      outline: none;
-      background: transparent;
-      padding: 0 2px;
-      margin: 0;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 400;
-      color: var(--text-head);
-      line-height: normal;
-    }
-
-    /* Spaced password dots matching reference design */
-    .inp[type="password"] {
-      letter-spacing: 0.22em;
-      font-size: 16px;
-    }
-
-    /* Hide native browser password reveal/clear icons in Edge and Chrome on Windows */
-    .inp::-ms-reveal,
-    .inp::-ms-clear {
-      display: none !important;
-    }
-
-    .inp::placeholder {
-      color: var(--text-ph);
-      font-weight: 400;
-      opacity: 1;
-      line-height: normal;
-      letter-spacing: normal;
-    }
-
-    /* ==========================================================
-       PASSWORD STRENGTH CHIPS
-    ========================================================== */
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 14px;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
-      line-height: 1;
-      border: 1px solid #EAECF0;
-      color: #667085;
-      background: #F9FAFB;
-      transition: border-color var(--ease), color var(--ease), background var(--ease);
-      user-select: none;
-    }
-
-    /* Satisfied state */
-    .chip.ok {
-      border-color: var(--chip-border);
-      color: var(--chip-text);
-      background: var(--chip-bg);
-    }
-
-    .chip-check {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 12px;
-      height: 12px;
-      flex-shrink: 0;
-      color: currentColor;
-      opacity: 0;
-      transform: scale(0.6);
-      transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-
-    .chip.ok .chip-check {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    .chip-check svg {
-      display: block;
-      width: 10px;
-      height: 10px;
-    }
-
-    /* ==========================================================
-       CONTINUE BUTTON
-    ========================================================== */
-    .btn-cont {
-      width: 100%;
-      height: 52px;
-      border: none;
-      border-radius: 14px;
-      font-family: var(--font-sans);
-      font-size: 15px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: background var(--ease), box-shadow var(--ease), transform 0.1s ease;
-      user-select: none;
-      /* disabled default */
-      background: var(--btn-off-bg);
-      color: var(--btn-off-txt);
-      cursor: not-allowed;
-    }
-
-    .btn-cont.on {
-      background: var(--orange);
-      color: #FFFFFF;
-      cursor: pointer;
-      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
-    }
-
-    .btn-cont.on:hover {
-      background: var(--orange-h);
-      box-shadow: 0 4px 12px rgba(255, 106, 0, 0.25);
-    }
-
-    .btn-cont.on:active {
-      transform: scale(0.99);
-    }
-
-    /* spinner */
-    .spin {
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255,255,255,.35);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: rot .75s linear infinite;
-      display: none;
-      flex-shrink: 0;
-    }
-    .btn-cont.loading .spin { display: block; }
-    .btn-cont.loading .lbl-txt { opacity: .8; }
-    @keyframes rot { to { transform: rotate(360deg); } }
-
-    /* ==========================================================
-       SWITCH ROW
-    ========================================================== */
-    .switch {
-      font-size: 14px;
-      color: var(--text-head);
-      text-align: left;
-    }
-
-    .switch a {
-      color: var(--orange);
-      font-weight: 600;
-      margin-left: 5px;
-      transition: color var(--ease);
-    }
-
-    .switch a:hover {
-      color: var(--orange-h);
-      text-decoration: underline;
-    }
-
-    /* ==========================================================
-       FOOTER
-    ========================================================== */
-    .footer {
-      font-size: 13px;
-      color: var(--footer-txt);
-      text-align: center;
-      padding-top: 16px;
-      flex-shrink: 0;
-      width: 100%;
-    }
-
-    /* ==========================================================
-       SUCCESS STEP
-    ========================================================== */
-    .success-wrap {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      gap: 16px;
-      padding: 24px 0;
-    }
-
-    .success-icon {
-      width: 80px; height: 80px;
-      border-radius: 50%;
-      background: #E8F5EB;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: pop .45s cubic-bezier(.16,1,.3,1) both;
-    }
-
-    @keyframes pop { from { opacity:0; transform:scale(.5); } to { opacity:1; transform:scale(1); } }
-
-    .success-hdg {
-      font-family: var(--font-serif);
-      font-size: 30px;
-      color: var(--text-head);
-    }
-
-    .success-msg {
-      font-size: 14.5px;
-      color: var(--text-sub);
-      line-height: 1.6;
-      max-width: 320px;
-    }
-
-    .success-msg strong { color: var(--orange); font-weight: 600; }
-
-    .btn-back {
-      background: none;
-      border: none;
-      color: var(--orange);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      padding: 8px 0;
-      font-family: inherit;
-      transition: color var(--ease);
-    }
-
-    .btn-back:hover { color: var(--orange-h); }
-
-    /* ==========================================================
-       TOAST
-    ========================================================== */
-    .toast-shelf {
-      position: fixed; top: 22px; right: 22px;
-      z-index: 9999;
-      display: flex; flex-direction: column; gap: 10px;
-      pointer-events: none;
-    }
-
-    .toast {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 18px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      box-shadow: 0 8px 24px rgba(0,0,0,.12);
-      pointer-events: auto;
-      animation: slideIn .22s ease both;
-      max-width: 340px;
-    }
-
-    .toast.ok  { background: #1B2E23; color: #6CE9A6; }
-    .toast.err { background: #2E1B1B; color: #FCA5A5; }
-    .toast.inf { background: #1F2430; color: #93C5FD; }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateX(20px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-
-    /* ==========================================================
-       RESPONSIVE — Mobile breakpoint (matching media_1789084296920.png)
-    ========================================================== */
-    @media (max-width: 960px) {
-      .right { display: none; }
-      .left  {
-        flex: 0 0 100%;
-        max-width: 100%;
-        padding: 24px 20px 32px 20px;
-        min-height: 100vh;
-      }
-      .content {
-        max-width: 100%;
-        padding: 20px 0 0;
-        margin: 0;
-        justify-content: flex-start;
-      }
-      .hdg {
-        font-size: 32px;
-        margin-top: 18px;
-        margin-bottom: 6px;
-      }
-      .sub {
-        font-size: 14.5px;
-        margin-bottom: 24px;
-      }
-      .form {
-        gap: 16px;
-      }
-      .chips {
-        margin-top: 14px;
-      }
-      /* On mobile, Already have an account sits above Continue button */
-      .switch {
-        order: 4;
-        margin-top: 48px;
-        margin-bottom: 22px;
-      }
-      .btn-area {
-        order: 5;
-        position: static;
-        padding: 0;
-        background: transparent;
-        border: none;
-        margin-bottom: 16px;
-      }
-      .footer { display: none; }
-    }
-
-    /* Desktop: button first, switch below */
-    @media (min-width: 961px) {
-      .btn-area {
-        order: 4;
-        margin-top: 20px;
-        padding: 0;
-        background: none;
-        border: none;
-      }
-      .switch {
-        order: 5;
-        margin-top: 14px;
-      }
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up | Huddle</title>
+  <meta name="description" content="Set up Huddle for your team. Real-time team collaboration, channels, messaging and presence tracking.">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" type="image/svg+xml" href="images/logo.svg">
 </head>
 <body>
 
-  <!-- Toast shelf -->
-  <div class="toast-shelf" id="toastShelf" aria-live="polite"></div>
-
-  <div class="page">
-
-    <!-- ===================================================
-         LEFT PANE
-    =================================================== -->
-    <div class="left">
-
-      <!-- Topbar -->
-      <header class="topbar">
-        <a href="index.html" class="logo" aria-label="Huddle home">
-          huddle<span class="logo-dot" aria-hidden="true"></span>
+  <div class="page-wrapper">
+    <!-- Left Column: Form Section -->
+    <div class="auth-left-pane">
+      <!-- Top Brand Header -->
+      <header class="auth-header">
+        <a href="index.html" class="brand-logo" aria-label="Huddle Home">
+          huddle<span class="dot">•</span>
         </a>
-        <span class="locale">ENG US</span>
+        <div class="locale-indicator" role="button" tabindex="0" title="Language selection">
+          ENG US
+        </div>
       </header>
 
-      <!-- Centre content -->
-      <main class="content">
+      <!-- Main Form Area -->
+      <main class="auth-content">
+        <h1 class="auth-heading">Hi there!</h1>
+        <p class="auth-subheading">Set up Huddle for your team.</p>
 
-        <!-- ─── STEP 1: Form ─── -->
-        <section class="step active" id="stepForm">
-          <h1 class="hdg">Hi there!</h1>
-          <p class="sub">Set up Huddle for your team.</p>
-
-          <form id="signupForm" class="form" novalidate>
-
-            <!-- NAME -->
-            <div class="field">
-              <label for="name" class="lbl">
-                Name <span class="ast" aria-label="required">*</span>
-              </label>
-              <div class="inp-row" id="nameWrap">
-                <span class="ico left" aria-hidden="true">
-                  <!-- person icon -->
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-5.33 0-8 2.67-8 4v1h16v-1c0-1.33-2.67-4-8-4z"/>
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  id="name"
-                  name="fullName"
-                  class="inp"
-                  placeholder="Grace Abdul"
-                  required
-                  autofocus
-                  autocomplete="name"
-                  aria-required="true"
-                />
-              </div>
-            </div>
-
-            <!-- EMAIL -->
-            <div class="field">
-              <label for="email" class="lbl">
-                Email <span class="ast" aria-label="required">*</span>
-              </label>
-              <div class="inp-row" id="emailWrap">
-                <span class="ico left" aria-hidden="true">
-                  <!-- envelope icon -->
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
-                  </svg>
-                </span>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  class="inp"
-                  placeholder="grace@teamname.com"
-                  required
-                  autocomplete="email"
-                  aria-required="true"
-                />
-              </div>
-            </div>
-
-            <!-- PASSWORD -->
-            <div class="field">
-              <label for="password" class="lbl">
-                Password <span class="ast" aria-label="required">*</span>
-              </label>
-              <div class="inp-row" id="pwdWrap">
-                <span class="ico left" aria-hidden="true">
-                  <!-- padlock icon -->
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zM12 17a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm3.1-9H8.9V6a3.1 3.1 0 0 1 6.2 0v2z"/>
-                  </svg>
-                </span>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  class="inp"
-                  placeholder="••••••••••••"
-                  required
-                  autocomplete="new-password"
-                  aria-required="true"
-                />
-                <!-- eye toggle — starts as eye-off (password hidden) -->
-                <button
-                  type="button"
-                  class="ico right"
-                  id="eyeBtn"
-                  aria-label="Show password"
-                >
-                  <!-- eye-off (slashed) — default -->
-                  <svg id="iconEyeOff" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                  <!-- eye-open — shown when password is revealed -->
-                  <svg id="iconEyeOn" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    style="display:none">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                </button>
-              </div>
-
-              <!-- Password strength chips -->
-              <div class="chips" id="chips" aria-live="polite" aria-label="Password requirements">
-                <span class="chip" id="c-lower" aria-atomic="true">
-                  <span class="chip-check" aria-hidden="true">
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </span>
-                  1 lowercase letter
-                </span>
-                <span class="chip" id="c-num" aria-atomic="true">
-                  <span class="chip-check" aria-hidden="true">
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </span>
-                  1 number
-                </span>
-                <span class="chip" id="c-upper" aria-atomic="true">
-                  <span class="chip-check" aria-hidden="true">
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </span>
-                  1 uppercase letter
-                </span>
-                <span class="chip" id="c-special" aria-atomic="true">
-                  <span class="chip-check" aria-hidden="true">
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </span>
-                  1 special character
-                </span>
-                <span class="chip" id="c-len" aria-atomic="true">
-                  <span class="chip-check" aria-hidden="true">
-                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </span>
-                  At least 8 characters
-                </span>
-              </div>
-            </div>
-
-            <!-- Continue button (comes directly after password chips) -->
-            <div class="btn-area">
-              <button
-                type="submit"
-                class="btn-cont"
-                id="submitBtn"
-                disabled
-                aria-disabled="true"
+        <form id="signupForm" class="auth-form" novalidate>
+          <!-- Name Field -->
+          <div class="form-group">
+            <label for="name" class="form-label">
+              Name <span class="asterisk">*</span>
+            </label>
+            <div class="input-wrapper">
+              <span class="input-icon-left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                </svg>
+              </span>
+              <input 
+                type="text" 
+                id="name" 
+                name="fullName" 
+                class="form-input" 
+                placeholder="Grace Abdul" 
+                required 
+                autofocus 
+                autocomplete="name"
               >
-                <span class="spin" aria-hidden="true"></span>
-                <span class="lbl-txt">Continue</span>
+            </div>
+          </div>
+
+          <!-- Email Field -->
+          <div class="form-group">
+            <label for="email" class="form-label">
+              Email <span class="asterisk">*</span>
+            </label>
+            <div class="input-wrapper">
+              <span class="input-icon-left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+              </span>
+              <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                class="form-input" 
+                placeholder="grace@teamname.com" 
+                required 
+                autocomplete="email"
+              >
+            </div>
+          </div>
+
+          <!-- Password Field -->
+          <div class="form-group">
+            <label for="password" class="form-label">
+              Password <span class="asterisk">*</span>
+            </label>
+            <div class="input-wrapper">
+              <span class="input-icon-left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                </svg>
+              </span>
+              <input 
+                type="password" 
+                id="password" 
+                name="password" 
+                class="form-input" 
+                placeholder="••••••••••••" 
+                required 
+                autocomplete="new-password"
+              >
+              <button 
+                type="button" 
+                class="input-icon-right" 
+                data-toggle="password" 
+                data-target="password" 
+                aria-label="Toggle password visibility"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
               </button>
             </div>
 
-            <!-- Switch link (placed directly below the Continue button) -->
-            <p class="switch">
-              Already have an account? <a href="signin.html">Sign in</a>
-            </p>
-
-          </form>
-        </section>
-
-        <!-- ─── STEP 2: Success / Email sent ─── -->
-        <section class="step" id="stepSuccess">
-          <div class="success-wrap">
-            <div class="success-icon" aria-hidden="true">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
-                stroke="#2ECC71" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
+            <!-- Password Requirements Dropdown Chips -->
+            <div class="password-requirements" id="passwordRequirements" aria-live="polite">
+              <div class="requirements-chips">
+                <span class="req-chip unmet" data-req="lower">
+                  <span class="req-icon">✕</span> 1 lowercase letter
+                </span>
+                <span class="req-chip unmet" data-req="number">
+                  <span class="req-icon">✕</span> 1 number
+                </span>
+                <span class="req-chip unmet" data-req="upper">
+                  <span class="req-icon">✕</span> 1 uppercase letter
+                </span>
+                <span class="req-chip unmet" data-req="special">
+                  <span class="req-icon">✕</span> 1 special character
+                </span>
+                <span class="req-chip unmet" data-req="length">
+                  <span class="req-icon">✕</span> At least 8 characters
+                </span>
+              </div>
             </div>
-            <h1 class="success-hdg">You're all set!</h1>
-            <p class="success-msg">
-              We've sent a verification link to<br>
-              <strong id="sentEmail"></strong>
-            </p>
-            <p class="success-msg" style="font-size:13.5px">
-              Check your inbox and click the link to activate your account.
-              Check spam if you don't see it.
-            </p>
-            <a href="dashboard.html" class="btn submit-btn on" style="display:inline-flex;align-items:center;justify-content:center;margin-top:16px;text-decoration:none;color:#ffffff;padding:12px 24px;border-radius:12px;font-weight:600;">Continue to Dashboard →</a>
-            <button class="btn-back" id="backBtn" style="margin-top:10px;">← Back to sign up</button>
           </div>
-        </section>
 
+          <!-- Submit Button (Centered Spinner on Loading matching screenshot) -->
+          <div class="form-actions">
+            <button type="submit" class="submit-btn" disabled id="continueBtn">
+              <span class="btn-spinner" aria-label="Loading..."></span>
+              <span class="btn-text">Continue</span>
+            </button>
+          </div>
+
+          <!-- Already have an account link (Positioned directly under button) -->
+          <p class="auth-switch-text">
+            Already have an account? <a href="signin.html">Sign in</a>
+          </p>
+        </form>
       </main>
 
-      <!-- Footer -->
-      <footer class="footer">2026. Huddle by Altschool Africa</footer>
+      <!-- Desktop Footer -->
+      <footer class="auth-footer">
+        2026. Huddle by Altschool Africa
+      </footer>
+    </div>
 
-    </div><!-- /left -->
-
-    <!-- ===================================================
-         RIGHT PANE  (desktop only)
-    =================================================== -->
-    <aside class="right" aria-hidden="true">
-      <div class="hero-card">
-        <img
-          src="images/side-image.jpg"
-          alt="Two colleagues smiling and working together on a laptop in a stylish lounge"
+    <!-- Right Column: Hero Image Card (Desktop Only) -->
+    <aside class="auth-right-pane" aria-label="Team preview">
+      <div class="hero-image-card">
+        <img 
+          src="images/side-image.jpg" 
+          alt="Two team members collaborating happily on a laptop in an office lounge"
           loading="eager"
-          width="600"
-          height="900"
-        />
+        >
       </div>
     </aside>
+  </div>
 
-  </div><!-- /page -->
-
-  <!-- ===================================================
-       JAVASCRIPT
-  =================================================== -->
   <script src="js/api.js"></script>
-  <script>
-    (() => {
-      'use strict';
-
-      const API = (window.HuddleApi && window.HuddleApi.BASE_URL !== undefined)
-        ? window.HuddleApi.BASE_URL
-        : (window.location && window.location.protocol && window.location.protocol.startsWith('http') ? '' : 'http://localhost:3000');
-
-      /* DOM refs */
-      const formEl    = document.getElementById('signupForm');
-      const nameEl    = document.getElementById('name');
-      const emailEl   = document.getElementById('email');
-      const pwdEl     = document.getElementById('password');
-      const submitBtn = document.getElementById('submitBtn');
-      const eyeBtn    = document.getElementById('eyeBtn');
-      const eyeOff    = document.getElementById('iconEyeOff');
-      const eyeOn     = document.getElementById('iconEyeOn');
-      const stepForm  = document.getElementById('stepForm');
-      const stepOk    = document.getElementById('stepSuccess');
-      const sentEmail = document.getElementById('sentEmail');
-      const backBtn   = document.getElementById('backBtn');
-      const shelf     = document.getElementById('toastShelf');
-
-      /* Chip refs */
-      const chips = {
-        lower  : document.getElementById('c-lower'),
-        num    : document.getElementById('c-num'),
-        upper  : document.getElementById('c-upper'),
-        special: document.getElementById('c-special'),
-        len    : document.getElementById('c-len'),
-      };
-
-      /* ── Password strength live update ── */
-      const rules = {
-        lower  : v => /[a-z]/.test(v),
-        num    : v => /[0-9]/.test(v),
-        upper  : v => /[A-Z]/.test(v),
-        special: v => /[^a-zA-Z0-9]/.test(v),
-        len    : v => v.length >= 8,
-      };
-
-      function evalPassword(val) {
-        let allOk = true;
-        for (const [key, test] of Object.entries(rules)) {
-          const ok = test(val);
-          chips[key].classList.toggle('ok', ok);
-          chips[key].setAttribute('aria-label',
-            (ok ? '✓ ' : '') + chips[key].textContent.trim()
-          );
-          if (!ok) allOk = false;
-        }
-        return allOk;
-      }
-
-      /* ── Live validation → enable/disable button ── */
-      function validate() {
-        const nameOk  = nameEl.value.trim().length > 0;
-        const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim());
-        const pwdOk   = evalPassword(pwdEl.value);
-        const all     = nameOk && emailOk && pwdOk;
-
-        submitBtn.disabled = !all;
-        submitBtn.setAttribute('aria-disabled', !all);
-        submitBtn.classList.toggle('on', all);
-      }
-
-      [nameEl, emailEl, pwdEl].forEach(el => el.addEventListener('input', validate));
-
-      /* ── Eye icon toggle ── */
-      eyeBtn.addEventListener('click', () => {
-        const hidden = pwdEl.type === 'password';
-        pwdEl.type   = hidden ? 'text' : 'password';
-        eyeOff.style.display = hidden ? 'none' : '';
-        eyeOn.style.display  = hidden ? ''     : 'none';
-        eyeBtn.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
-      });
-
-      /* ── Form submit ── */
-      formEl.addEventListener('submit', async e => {
-        e.preventDefault();
-        if (submitBtn.disabled) return;
-
-        const fullName = nameEl.value.trim();
-        const email    = emailEl.value.trim();
-        const password = pwdEl.value;
-
-        setLoading(true);
-
-        try {
-          let res = await tryPost(`${API}/api/v1/auth/signup`, { fullName, email, password })
-                 ?? await tryPost(`${API}/auth/signup`,        { fullName, email, password });
-
-          if (!res) throw new Error('No response');
-
-          const data = await res.json().catch(() => ({}));
-
-          if (res.ok) {
-            let token = data.accessToken ?? data.data?.accessToken;
-            let user = data.user ?? data.data?.user ?? { fullName, email };
-            try {
-              const loginRes = await tryPost(`${API}/api/v1/auth/login`, { email, password })
-                            ?? await tryPost(`${API}/auth/login`, { email, password });
-              if (loginRes && loginRes.ok) {
-                const loginData = await loginRes.json().catch(() => ({}));
-                token = loginData.accessToken ?? loginData.data?.accessToken ?? token;
-                user = loginData.user ?? loginData.data?.user ?? user;
-                const refresh = loginData.refreshToken ?? loginData.data?.refreshToken;
-                if (refresh) localStorage.setItem('huddle_refresh_token', refresh);
-              }
-            } catch {}
-            if (token) localStorage.setItem('huddle_token', token);
-            if (user) localStorage.setItem('huddle_user', JSON.stringify(user));
-            sentEmail.textContent = email;
-            stepForm.classList.remove('active');
-            stepOk.classList.add('active');
-            toast('Account created successfully!', 'ok');
-          } else {
-            const msg = Array.isArray(data.message)
-              ? data.message.join(', ')
-              : (data.message || 'Registration failed. Please try again.');
-            toast(msg, 'err');
-          }
-        } catch {
-          toast('Could not reach the server. Check that the API is running on port 3000.', 'err');
-        } finally {
-          setLoading(false);
-        }
-      });
-
-      async function tryPost(url, body) {
-        try {
-          return await fetch(url, {
-            method : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body   : JSON.stringify(body),
-          });
-        } catch {
-          return null;
-        }
-      }
-
-      /* ── Back button ── */
-      backBtn.addEventListener('click', () => {
-        stepOk.classList.remove('active');
-        stepForm.classList.add('active');
-      });
-
-      /* ── Loading state ── */
-      function setLoading(on) {
-        submitBtn.classList.toggle('loading', on);
-        submitBtn.disabled = on;
-        submitBtn.querySelector('.lbl-txt').textContent = on ? 'Please wait…' : 'Continue';
-      }
-
-      /* ── Toast ── */
-      const ICONS = {
-        ok : `<svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#2ECC71"/><polyline points="20 6 9 17 4 12" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-        err: `<svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#ef4444"/><line x1="8" y1="8" x2="16" y2="16" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><line x1="16" y1="8" x2="8" y2="16" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>`,
-        inf: `<svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#FF7700"/><path d="M12 8v5M12 15h.01" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>`,
-      };
-
-      function toast(msg, type = 'inf') {
-        const t = document.createElement('div');
-        t.className = `toast ${type}`;
-        t.innerHTML = `${ICONS[type]}<span>${esc(msg)}</span>`;
-        shelf.appendChild(t);
-        setTimeout(() => {
-          t.style.cssText = 'opacity:0;transform:translateX(20px);transition:.25s ease';
-          setTimeout(() => t.remove(), 280);
-        }, 4200);
-      }
-
-      function esc(s) {
-        const d = document.createElement('div');
-        d.textContent = s;
-        return d.innerHTML;
-      }
-
-    })();
-  </script>
+  <script src="js/app.js"></script>
 </body>
 </html>

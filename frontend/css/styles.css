@@ -30,9 +30,9 @@
   
   --color-btn-disabled-bg: #f1f4f8;
   --color-btn-disabled-text: #cfd7e5;
-  --color-btn-active-bg: #1e263e;
+  --color-btn-active-bg: #a32f09; /* Rich terracotta from visual specification */
   --color-btn-active-text: #ffffff;
-  --color-btn-active-hover: #131a2b;
+  --color-btn-active-hover: #8e2807;
 
   /* Typography */
   --font-display: 'DM Serif Display', Georgia, serif;
@@ -320,6 +320,78 @@ html, body {
 }
 
 /* ==========================================================================
+   Password Requirements Dropdown & Chips
+   ========================================================================== */
+
+.password-requirements {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-6px);
+  pointer-events: none;
+  margin: 0;
+  transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.22s ease,
+              transform 0.22s ease,
+              margin 0.22s ease;
+}
+
+.password-requirements.is-open {
+  max-height: 160px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  margin-top: 10px;
+  margin-bottom: 2px;
+}
+
+.requirements-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 7px;
+}
+
+.req-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+/* Unmet State (Red) - User requested red instead of notification */
+.req-chip.unmet {
+  background-color: #FEF3F2;
+  border-color: #FECDCA;
+  color: #B42318;
+}
+
+.req-chip.unmet .req-icon {
+  color: #D92D20;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* Met State (Green) - Matches screenshot exactly */
+.req-chip.met {
+  background-color: #ECFDF3;
+  border-color: #A6F4C5;
+  color: #027A48;
+}
+
+.req-chip.met .req-icon {
+  color: #027A48;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ==========================================================================
    Action Button (Continue)
    ========================================================================== */
 
@@ -339,6 +411,7 @@ html, body {
   margin-top: 6px;
   transition: all var(--transition-normal);
   user-select: none;
+  position: relative;
   
   /* Initial State (matching image: subtle light grey/blue) */
   background-color: var(--color-btn-disabled-bg);
@@ -352,13 +425,13 @@ html, body {
   background-color: var(--color-btn-active-bg);
   color: var(--color-btn-active-text);
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(30, 38, 62, 0.16);
+  box-shadow: 0 4px 14px rgba(163, 47, 9, 0.22);
 }
 
 .submit-btn.is-active:hover,
 .submit-btn:not([disabled]):hover {
   background-color: var(--color-btn-active-hover);
-  box-shadow: 0 6px 18px rgba(30, 38, 62, 0.22);
+  box-shadow: 0 6px 18px rgba(163, 47, 9, 0.3);
 }
 
 .submit-btn.is-active:active,
@@ -366,10 +439,10 @@ html, body {
   transform: scale(0.99);
 }
 
-/* Loading state spinner */
+/* Loading state spinner matching screenshot */
 .btn-spinner {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border: 2.5px solid rgba(255, 255, 255, 0.35);
   border-top-color: #ffffff;
   border-radius: 50%;
@@ -377,12 +450,17 @@ html, body {
   display: none;
 }
 
+.submit-btn.loading {
+  background-color: var(--color-btn-active-bg);
+  cursor: wait;
+}
+
 .submit-btn.loading .btn-spinner {
   display: block;
 }
 
 .submit-btn.loading .btn-text {
-  opacity: 0.8;
+  display: none;
 }
 
 @keyframes spin {

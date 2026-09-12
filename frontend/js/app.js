@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   initPasswordToggles();
+  initPasswordRequirements();
   initFormValidation();
   initAuthFormSubmit();
 });
@@ -54,6 +55,78 @@ function initPasswordToggles() {
 }
 
 /**
+ * Password requirements real-time chip validation and dropdown
+ */
+function initPasswordRequirements() {
+  const passwordInput = document.getElementById('password');
+  const reqContainer = document.getElementById('passwordRequirements');
+  if (!passwordInput || !reqContainer) return;
+
+  const chips = {
+    lower: reqContainer.querySelector('[data-req="lower"]'),
+    number: reqContainer.querySelector('[data-req="number"]'),
+    upper: reqContainer.querySelector('[data-req="upper"]'),
+    special: reqContainer.querySelector('[data-req="special"]'),
+    length: reqContainer.querySelector('[data-req="length"]'),
+  };
+
+  function checkPasswordRequirements(val) {
+    return {
+      lower: /[a-z]/.test(val),
+      number: /[0-9]/.test(val),
+      upper: /[A-Z]/.test(val),
+      special: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(val),
+      length: val.length >= 8,
+    };
+  }
+
+  function updateChips() {
+    const val = passwordInput.value;
+    const checks = checkPasswordRequirements(val);
+    let allMet = true;
+
+    for (const [key, met] of Object.entries(checks)) {
+      const chip = chips[key];
+      if (!chip) continue;
+      const icon = chip.querySelector('.req-icon');
+      if (met) {
+        chip.classList.add('met');
+        chip.classList.remove('unmet');
+        if (icon) icon.textContent = '✓';
+      } else {
+        chip.classList.add('unmet');
+        chip.classList.remove('met');
+        if (icon) icon.textContent = '✕';
+        allMet = false;
+      }
+    }
+    return allMet;
+  }
+
+  // When user clicks or focuses into password input, drop down the requirements
+  const openDropdown = () => {
+    reqContainer.classList.add('is-open');
+    updateChips();
+  };
+
+  passwordInput.addEventListener('focus', openDropdown);
+  passwordInput.addEventListener('click', openDropdown);
+  passwordInput.addEventListener('input', () => {
+    openDropdown();
+    updateChips();
+  });
+
+  passwordInput.addEventListener('blur', () => {
+    if (!passwordInput.value) {
+      reqContainer.classList.remove('is-open');
+    }
+  });
+
+  // Initial state setup
+  updateChips();
+}
+
+/**
  * Real-time form validation to enable / disable the Continue button
  */
 function initFormValidation() {
@@ -61,35 +134,72 @@ function initFormValidation() {
 
   forms.forEach((form) => {
     const submitBtn = form.querySelector('.submit-btn');
-    const inputs = form.querySelectorAll('input[required]');
+    const nameInput = form.querySelector('#name');
+    const emailInput = form.querySelector('#email');
+    const passwordInput = form.querySelector('#password');
+    const reqContainer = form.querySelector('#passwordRequirements');
 
     const checkValidity = () => {
-      let allFilled = true;
-      inputs.forEach((input) => {
-        const wrapper = input.closest('.input-wrapper');
-        if (input.value.trim().length > 0) {
+      let isValid = true;
+
+      // Check name if present (signup form)
+      if (nameInput) {
+        const nameVal = nameInput.value.trim();
+        const wrapper = nameInput.closest('.input-wrapper');
+        if (nameVal.length >= 2) {
           wrapper?.classList.add('has-value');
         } else {
           wrapper?.classList.remove('has-value');
-          allFilled = false;
+          isValid = false;
+        }
+      }
+
+      // Check email
+      if (emailInput) {
+        const emailVal = emailInput.value.trim();
+        const wrapper = emailInput.closest('.input-wrapper');
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (emailVal.length > 0 && emailPattern.test(emailVal)) {
+          wrapper?.classList.add('has-value');
+        } else {
+          wrapper?.classList.remove('has-value');
+          isValid = false;
+        }
+      }
+
+      // Check password
+      if (passwordInput) {
+        const passVal = passwordInput.value;
+        const wrapper = passwordInput.closest('.input-wrapper');
+        if (passVal.length > 0) {
+          wrapper?.classList.add('has-value');
+        } else {
+          wrapper?.classList.remove('has-value');
         }
 
-        // Basic email check if it's an email field
-        if (input.type === 'email' && input.value.trim().length > 0) {
-          const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailPattern.test(input.value.trim())) {
-            allFilled = false;
+        if (reqContainer) {
+          // Signup form requires all 5 password rules
+          const checks = {
+            lower: /[a-z]/.test(passVal),
+            number: /[0-9]/.test(passVal),
+            upper: /[A-Z]/.test(passVal),
+            special: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(passVal),
+            length: passVal.length >= 8,
+          };
+          const allChecksPassed = Object.values(checks).every(Boolean);
+          if (!allChecksPassed) {
+            isValid = false;
+          }
+        } else {
+          // Signin form requires non-empty password
+          if (passVal.length < 1) {
+            isValid = false;
           }
         }
-
-        // Password length check
-        if (input.type === 'password' && input.value.length < 6) {
-          allFilled = false;
-        }
-      });
+      }
 
       if (submitBtn) {
-        if (allFilled) {
+        if (isValid) {
           submitBtn.removeAttribute('disabled');
           submitBtn.classList.add('is-active');
         } else {
@@ -99,11 +209,11 @@ function initFormValidation() {
       }
     };
 
+    const inputs = form.querySelectorAll('input');
     inputs.forEach((input) => {
       input.addEventListener('input', checkValidity);
       input.addEventListener('change', checkValidity);
       
-      // Highlight wrapper active border on focus
       const wrapper = input.closest('.input-wrapper');
       input.addEventListener('focus', () => {
         wrapper?.classList.add('active-border');
@@ -154,22 +264,17 @@ async function handleSignup(form) {
   const password = passwordInput?.value;
 
   if (!fullName || !email || !password) {
-    showToast('Please fill in all required fields.', 'error');
-    return;
-  }
-
-  if (password.length < 8) {
-    showToast('Password must be at least 8 characters long.', 'error');
     return;
   }
 
   const hasLower = /[a-z]/.test(password);
   const hasUpper = /[A-Z]/.test(password);
-  const hasNum = /\d/.test(password);
+  const hasNum = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password);
+  const hasLength = password.length >= 8;
 
-  if (!hasLower || !hasUpper || !hasNum || !hasSpecial) {
-    showToast('Password must contain uppercase, lowercase, number, and special character.', 'error');
+  if (!hasLower || !hasUpper || !hasNum || !hasSpecial || !hasLength) {
+    // Unmet requirement chips already show red - no notification needed
     return;
   }
 
