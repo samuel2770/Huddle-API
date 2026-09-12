@@ -4,9 +4,18 @@
  */
 
 // Backend API Base URL
-const API_BASE_URL = window.location.origin.includes('localhost:3000')
-  ? ''
-  : 'http://localhost:3000';
+const API_BASE_URL = (() => {
+  if (typeof window.__HUDDLE_API_URL__ === 'string' && window.__HUDDLE_API_URL__.trim()) {
+    return window.__HUDDLE_API_URL__.trim().replace(/\/+$/, '');
+  }
+  if (window.HuddleApi && window.HuddleApi.BASE_URL !== undefined) {
+    return window.HuddleApi.BASE_URL;
+  }
+  if (window.location && window.location.protocol && window.location.protocol.startsWith('http')) {
+    return '';
+  }
+  return 'http://localhost:3000';
+})();
 
 document.addEventListener('DOMContentLoaded', () => {
   // If already authenticated, redirect to dashboard

@@ -134,7 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.HuddleApi) {
         data = await window.HuddleApi.auth.login(email, password);
       } else {
-        const base = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
+        const base = (window.HuddleApi && window.HuddleApi.BASE_URL !== undefined)
+          ? window.HuddleApi.BASE_URL
+          : (window.location && window.location.protocol && window.location.protocol.startsWith('http') ? '' : 'http://localhost:3000');
         let res = await fetch(`${base}/api/v1/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

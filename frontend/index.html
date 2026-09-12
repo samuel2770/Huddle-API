@@ -842,7 +842,9 @@
     (() => {
       'use strict';
 
-      const API = window.location.origin.includes('localhost:3000') ? '' : 'http://localhost:3000';
+      const API = (window.HuddleApi && window.HuddleApi.BASE_URL !== undefined)
+        ? window.HuddleApi.BASE_URL
+        : (window.location && window.location.protocol && window.location.protocol.startsWith('http') ? '' : 'http://localhost:3000');
 
       /* DOM refs */
       const formEl    = document.getElementById('signupForm');

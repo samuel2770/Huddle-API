@@ -5,12 +5,33 @@
  */
 
 (function (window) {
-  // Determine backend base URL
-  const isLocalHost3000 =
-    window.location.protocol.startsWith('http') &&
-    (window.location.host === 'localhost:3000' || window.location.host === '127.0.0.1:3000');
+  // Determine backend base URL dynamically
+  function determineApiBase() {
+    if (typeof window.__HUDDLE_API_URL__ === 'string' && window.__HUDDLE_API_URL__.trim()) {
+      return window.__HUDDLE_API_URL__.trim().replace(/\/+$/, '');
+    }
 
-  const API_BASE = isLocalHost3000 ? '' : 'http://localhost:3000';
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryApi = params.get('api') || params.get('apiUrl');
+      if (queryApi) {
+        localStorage.setItem('huddle_api_base', queryApi);
+        return queryApi.replace(/\/+$/, '');
+      }
+      const stored = localStorage.getItem('huddle_api_base');
+      if (stored) return stored.replace(/\/+$/, '');
+    } catch {}
+
+    // When served over HTTP/HTTPS, relative requests ('') point to the same origin (Render, LAN, localhost)
+    if (window.location && window.location.protocol && window.location.protocol.startsWith('http')) {
+      return '';
+    }
+
+    // Fallback for file:/// protocol
+    return 'http://localhost:3000';
+  }
+
+  const API_BASE = determineApiBase();
 
   const STORAGE_KEYS = {
     TOKEN: 'huddle_token',
