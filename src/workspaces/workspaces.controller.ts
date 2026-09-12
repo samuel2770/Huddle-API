@@ -70,4 +70,15 @@ export class WorkspacesController {
   ) {
     return this.workspacesService.getMembers(workspaceId, userId);
   }
+
+  @Post(':identifier/join')
+  @ApiOperation({ summary: 'Join a workspace by ID or slug' })
+  @ApiResponse({ status: 200, description: 'Successfully joined workspace' })
+  @ApiResponse({ status: 404, description: 'Workspace not found' })
+  async join(
+    @Param('identifier') identifier: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.workspacesService.join(identifier, userId);
+  }
 }

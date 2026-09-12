@@ -23,7 +23,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 export class InvitesController {
   constructor(private readonly invitesService: InvitesService) {}
 
-  @Post('workspaces/:workspaceId/invites')
+  @Post(['workspaces/:workspaceId/invites', 'api/v1/workspaces/:workspaceId/invites'])
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send a workspace invite' })
@@ -39,7 +39,7 @@ export class InvitesController {
     return this.invitesService.create(workspaceId, inviterId, dto.email);
   }
 
-  @Post('invites/accept')
+  @Post(['invites/accept', 'api/v1/invites/accept'])
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Accept a workspace invite' })

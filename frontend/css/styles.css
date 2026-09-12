@@ -1,0 +1,576 @@
+/* ==========================================================================
+   Huddle Auth Design System
+   Matches Figma / Visual Specification Pixel-for-Pixel
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Brand Palette */
+  --color-brand-orange: #ff7700;
+  --color-brand-orange-hover: #e66a00;
+  --color-brand-dot: #ff7700;
+  
+  /* Text Colors */
+  --color-text-headline: #1e263e;
+  --color-text-subtitle: #8c97ab;
+  --color-text-label: #262f46;
+  --color-text-placeholder: #b2bccd;
+  --color-text-input: #1e263e;
+  --color-text-footer: #6b778c;
+  --color-text-header: #3b4562;
+  --color-text-asterisk: #6389df;
+  
+  /* Input & Button States */
+  --color-input-bg: #ffffff;
+  --color-input-border: #edf0f5;
+  --color-input-border-focus: #9c4935; /* Terracotta active border from design */
+  --color-icon-inactive: #9aa5b8;
+  --color-icon-active: #1e263e;
+  
+  --color-btn-disabled-bg: #f1f4f8;
+  --color-btn-disabled-text: #cfd7e5;
+  --color-btn-active-bg: #1e263e;
+  --color-btn-active-text: #ffffff;
+  --color-btn-active-hover: #131a2b;
+
+  /* Typography */
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Geometry & Elevation */
+  --radius-input: 14px;
+  --radius-button: 14px;
+  --radius-card: 28px;
+  --transition-fast: 0.18s ease;
+  --transition-normal: 0.25s ease;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  font-family: var(--font-sans);
+  background-color: #ffffff;
+  color: var(--color-text-headline);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================================
+   Split-Screen Page Layout
+   ========================================================================== */
+
+.page-wrapper {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #ffffff;
+}
+
+/* Left Pane: Form & Content */
+.auth-left-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 32px 56px 28px 64px;
+  max-width: 580px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* Right Pane: Hero Image Card (Desktop) */
+.auth-right-pane {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 16px 14px 0;
+  max-width: 50%;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+.hero-image-card {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  position: relative;
+  background-color: #f7f9fc;
+}
+
+.hero-image-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* ==========================================================================
+   Header Bar (Logo + Language Switcher)
+   ========================================================================== */
+
+.auth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-top: 4px;
+  margin-bottom: 24px;
+}
+
+.brand-logo {
+  display: inline-flex;
+  align-items: baseline;
+  text-decoration: none;
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.6px;
+  color: #2b344d;
+  user-select: none;
+  transition: opacity var(--transition-fast);
+}
+
+.brand-logo:hover {
+  opacity: 0.9;
+}
+
+.brand-logo .dot {
+  color: var(--color-brand-dot);
+  font-size: 32px;
+  line-height: 0;
+  margin-left: 1px;
+}
+
+.locale-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  color: var(--color-text-header);
+  cursor: pointer;
+  user-select: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background-color var(--transition-fast);
+}
+
+.locale-indicator:hover {
+  background-color: #f4f6fa;
+}
+
+/* ==========================================================================
+   Auth Main Content (Title, Subtitle, Form)
+   ========================================================================== */
+
+.auth-content {
+  width: 100%;
+  max-width: 410px;
+  margin: 0 auto;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-heading {
+  font-family: var(--font-display);
+  font-size: 38px;
+  line-height: 1.15;
+  font-weight: 400;
+  color: var(--color-text-headline);
+  margin-bottom: 6px;
+  letter-spacing: -0.3px;
+}
+
+.auth-subheading {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--color-text-subtitle);
+  margin-bottom: 28px;
+  font-weight: 400;
+}
+
+/* Form Styles */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.form-label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text-label);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  letter-spacing: -0.1px;
+}
+
+.form-label .asterisk {
+  color: var(--color-text-asterisk);
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Input Container & Icons */
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  background-color: var(--color-input-bg);
+  border: 1.5px solid var(--color-input-border);
+  border-radius: var(--radius-input);
+  padding: 0 16px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+  position: relative;
+}
+
+/* Active / Focus State matching the terracotta border in design */
+.input-wrapper:focus-within {
+  border-color: var(--color-input-border-focus);
+}
+
+.input-wrapper.active-border {
+  border-color: var(--color-input-border-focus);
+}
+
+.input-wrapper.error {
+  border-color: #ef4444;
+}
+
+.input-icon-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  color: var(--color-icon-inactive);
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.input-wrapper:focus-within .input-icon-left,
+.input-wrapper.has-value .input-icon-left {
+  color: var(--color-icon-active);
+}
+
+.form-input {
+  flex: 1;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  color: var(--color-text-input);
+  letter-spacing: -0.1px;
+}
+
+.form-input::placeholder {
+  color: var(--color-text-placeholder);
+  font-weight: 400;
+  opacity: 1;
+}
+
+.input-icon-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--color-icon-inactive);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin-left: 8px;
+  flex-shrink: 0;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.input-icon-right:hover {
+  color: var(--color-icon-active);
+}
+
+.input-icon-right:active {
+  transform: scale(0.92);
+}
+
+/* ==========================================================================
+   Action Button (Continue)
+   ========================================================================== */
+
+.submit-btn {
+  width: 100%;
+  height: 52px;
+  border: none;
+  border-radius: var(--radius-button);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+  transition: all var(--transition-normal);
+  user-select: none;
+  
+  /* Initial State (matching image: subtle light grey/blue) */
+  background-color: var(--color-btn-disabled-bg);
+  color: var(--color-btn-disabled-text);
+  cursor: not-allowed;
+}
+
+/* Enabled / Active State */
+.submit-btn.is-active,
+.submit-btn:not([disabled]) {
+  background-color: var(--color-btn-active-bg);
+  color: var(--color-btn-active-text);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(30, 38, 62, 0.16);
+}
+
+.submit-btn.is-active:hover,
+.submit-btn:not([disabled]):hover {
+  background-color: var(--color-btn-active-hover);
+  box-shadow: 0 6px 18px rgba(30, 38, 62, 0.22);
+}
+
+.submit-btn.is-active:active,
+.submit-btn:not([disabled]):active {
+  transform: scale(0.99);
+}
+
+/* Loading state spinner */
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: none;
+}
+
+.submit-btn.loading .btn-spinner {
+  display: block;
+}
+
+.submit-btn.loading .btn-text {
+  opacity: 0.8;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Alternative Links (Sign in / Sign up / Forgot password)
+   ========================================================================== */
+
+.auth-switch-text {
+  font-size: 14px;
+  color: #273147;
+  font-weight: 400;
+  margin-top: 14px;
+}
+
+.auth-switch-text a {
+  color: var(--color-brand-orange);
+  font-weight: 600;
+  text-decoration: none;
+  margin-left: 4px;
+  transition: color var(--transition-fast), text-decoration var(--transition-fast);
+}
+
+.auth-switch-text a:hover {
+  color: var(--color-brand-orange-hover);
+  text-decoration: underline;
+}
+
+.forgot-password-link {
+  font-size: 13px;
+  color: var(--color-brand-orange);
+  text-decoration: none;
+  font-weight: 500;
+  align-self: flex-end;
+  margin-top: -6px;
+  margin-bottom: 4px;
+  transition: color var(--transition-fast);
+}
+
+.forgot-password-link:hover {
+  text-decoration: underline;
+  color: var(--color-brand-orange-hover);
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.auth-footer {
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-footer);
+  padding: 16px 0 6px 0;
+  user-select: none;
+}
+
+/* ==========================================================================
+   Toast Notification System
+   ========================================================================== */
+
+.toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  min-width: 300px;
+  max-width: 420px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background-color: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  border-left: 4px solid;
+  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s ease;
+}
+
+.toast.toast-success {
+  border-color: #10b981;
+  color: #064e3b;
+}
+
+.toast.toast-error {
+  border-color: #ef4444;
+  color: #7f1d1d;
+}
+
+.toast.toast-info {
+  border-color: #3b82f6;
+  color: #1e3a8a;
+}
+
+.toast-icon {
+  flex-shrink: 0;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ==========================================================================
+   Mobile Layout (Matches Image 2 Pixel-for-Pixel)
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  .page-wrapper {
+    flex-direction: column;
+  }
+
+  .auth-right-pane {
+    display: none; /* Image is hidden on mobile as seen in Image 2 */
+  }
+
+  .auth-left-pane {
+    max-width: 430px;
+    padding: 24px 24px 32px 24px;
+    min-height: 100vh;
+    justify-content: space-between;
+  }
+
+  .auth-header {
+    margin-bottom: 28px;
+    padding-top: 8px;
+  }
+
+  .brand-logo {
+    font-size: 25px;
+  }
+
+  .auth-content {
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .auth-heading {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+
+  .auth-subheading {
+    font-size: 14.5px;
+    margin-bottom: 28px;
+  }
+
+  .auth-form {
+    gap: 18px;
+  }
+
+  /* In mobile screenshot, "Already have an account? Sign in" sits immediately under the inputs */
+  .auth-switch-text {
+    margin-top: 14px;
+    font-size: 14px;
+  }
+
+  /* In mobile screenshot, the Continue button sits at the bottom */
+  .mobile-bottom-actions {
+    margin-top: 48px;
+    width: 100%;
+  }
+
+  .auth-footer {
+    display: none; /* Mobile view in screenshot shows clean bottom button */
+  }
+}
+
+@media (max-height: 700px) and (max-width: 960px) {
+  .mobile-bottom-actions {
+    margin-top: 24px;
+  }
+}

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Huddle — Sign in to your account</title>
+  <meta name="description" content="Sign in to Huddle. Enter your details to collaborate with your team and get back into Huddle.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="huddle-app">
+    <!-- Left Column: Form Section -->
+    <main class="form-column" id="form-column">
+      <div class="form-inner-container">
+        
+        <!-- Header -->
+        <header class="form-header">
+          <a href="#" class="brand-logo" aria-label="Huddle home">
+            huddle<span class="brand-dot">.</span>
+          </a>
+          <div class="lang-selector" id="lang-selector" tabindex="0" role="button" aria-label="Language selector">
+            <span class="lang-text">ENG US</span>
+            <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        </header>
+
+        <!-- Form Body Content -->
+        <div class="form-body">
+          <div class="form-headings">
+            <h1 class="welcome-heading">Welcome back!</h1>
+            <p class="welcome-subheading">Enter your details to get back into Huddle</p>
+          </div>
+
+          <!-- Error Banner (hidden by default) -->
+          <div id="error-banner" class="error-banner" role="alert" aria-live="polite">
+            <div class="error-icon-wrapper" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <span class="error-text">Invalid email or password, please try again</span>
+          </div>
+
+          <!-- Login Form -->
+          <form id="login-form" class="login-form" novalidate autocomplete="on">
+            
+            <!-- Email Field -->
+            <div class="field-group" id="email-field-group">
+              <label for="email" class="field-label">
+                Email<span class="required-asterisk" aria-hidden="true">*</span>
+              </label>
+              <div class="input-wrapper" id="email-input-wrapper">
+                <div class="input-icon-slot" id="email-icon-slot" aria-hidden="true">
+                  <!-- Mail Icon (default & when has value) -->
+                  <svg class="field-icon icon-mail" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="20" height="16" x="2" y="4" rx="2"></rect>
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                  </svg>
+                  <!-- Person/User Icon (shown when email is empty and focused) -->
+                  <svg class="field-icon icon-person" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  class="text-input"
+                  placeholder="grace@teamname.com"
+                  autocomplete="email"
+                  spellcheck="false"
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Password Field -->
+            <div class="field-group" id="password-field-group">
+              <label for="password" class="field-label">
+                Password<span class="required-asterisk" aria-hidden="true">*</span>
+              </label>
+              <div class="input-wrapper" id="password-input-wrapper">
+                <div class="input-icon-slot" aria-hidden="true">
+                  <svg class="field-icon icon-lock" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  class="text-input"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  required
+                >
+                <button
+                  type="button"
+                  id="toggle-password-btn"
+                  class="toggle-password-btn"
+                  aria-label="Toggle password visibility"
+                  tabindex="0"
+                >
+                  <!-- Eye Open Icon (default) -->
+                  <svg class="eye-icon icon-eye-open" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <!-- Eye Off Icon (when unmasked) -->
+                  <svg class="eye-icon icon-eye-closed" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m2 2 20 20"></path>
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Forgot Password Link -->
+            <div class="forgot-password-container">
+              <a href="#forgot-password" class="forgot-password-link" id="forgot-password-link">Forgot password?</a>
+            </div>
+
+            <!-- Flexible Space on mobile pushes bottom section down -->
+            <div class="mobile-flexible-spacer"></div>
+
+            <!-- Form Bottom Section: Sign up prompt + Continue button + Footer -->
+            <div class="form-bottom-actions">
+              <!-- Sign up prompt -->
+              <p class="signup-prompt">
+                <span class="prompt-text">Don't have an account</span>
+                <a href="#signup" class="signup-link" id="signup-link">Sign up</a>
+              </p>
+
+              <!-- Continue Button -->
+              <button
+                type="submit"
+                id="continue-btn"
+                class="continue-btn"
+                disabled
+              >
+                <span class="btn-spinner" aria-hidden="true"></span>
+                <span class="btn-text">Continue</span>
+              </button>
+
+              <!-- Footer -->
+              <footer class="form-footer">
+                <p class="footer-copyright">2026. Huddle by Altschool Africa</p>
+              </footer>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- Success feedback overlay (subtle demo modal / toast) -->
+      <div id="success-modal" class="success-modal" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="success-card">
+          <div class="success-icon-badge">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <h2 class="success-title">Welcome back!</h2>
+          <p class="success-message">Successfully authenticated. Taking you to your Huddle space...</p>
+          <button type="button" id="success-close-btn" class="success-btn">Go to Workspace</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Column: Lifestyle Photograph -->
+    <aside class="image-column" id="image-column" aria-label="Huddle lifestyle illustration">
+      <img
+        src="assets/lifestyle.jpg"
+        alt="Two colleagues smiling and collaborating on a laptop in a modern bright workspace"
+        class="lifestyle-image"
+        loading="eager"
+      >
+      <div class="image-column-overlay" aria-hidden="true"></div>
+    </aside>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
