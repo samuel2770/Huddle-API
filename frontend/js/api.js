@@ -94,6 +94,13 @@
       if (id) localStorage.setItem(STORAGE_KEYS.CHANNEL_ID, id);
       else localStorage.removeItem(STORAGE_KEYS.CHANNEL_ID);
     },
+    getActiveChannelName() {
+      return localStorage.getItem(STORAGE_KEYS.CHANNEL_NAME) || "general";
+    },
+    setActiveChannelName(name) {
+      if (name) localStorage.setItem(STORAGE_KEYS.CHANNEL_NAME, name);
+      else localStorage.removeItem(STORAGE_KEYS.CHANNEL_NAME);
+    },
     clearSession() {
       Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
     },
@@ -364,10 +371,10 @@
         return ApiClient.request(`/channels/${channelId}/messages?limit=${limit}`);
       },
 
-      async send(channelId, content, attachmentIds = []) {
+      async send(channelId, content) {
         return ApiClient.request(`/channels/${channelId}/messages`, {
           method: 'POST',
-          body: { content, attachmentIds },
+          body: { content: content.trim() },
         });
       },
     },

@@ -691,52 +691,280 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function renderChannelMainView(channel) {
+  let activeMessagePollInterval = null;
+
+  async function renderChannelMainView(channel) {
     const mainArea = document.getElementById('dashboard-main');
     if (!mainArea || !channel) return;
+
+    if (activeMessagePollInterval) {
+      clearInterval(activeMessagePollInterval);
+      activeMessagePollInterval = null;
+    }
+
+    const currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
 
     mainArea.innerHTML = `
       <div style="display:flex;flex-direction:column;height:100%;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;">
         <!-- Channel Header -->
-        <header style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #EAECF0;background:#ffffff;">
+        <header style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
           <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-size:20px;font-weight:700;color:#101828;">#${escapeHtml(channel.name)}</span>
             <span style="display:inline-flex;padding:2px 8px;border-radius:12px;background:#F2F4F7;color:#344054;font-size:12px;font-weight:600;text-transform:capitalize;">
               ${escapeHtml(channel.type || 'public')}
             </span>
           </div>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <a href="create-channel.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#FF6A00;color:#ffffff;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:background 0.15s ease;">
-              + New Channel
-            </a>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button type="button" id="channel-invite-btn" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#FF6A00;color:#ffffff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s ease;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7.5" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+              </svg>
+              + Invite Member
+            </button>
           </div>
         </header>
 
         <!-- Channel Chat Messages Area -->
-        <div style="flex:1;overflow-y:auto;padding:28px 24px;display:flex;flex-direction:column;justify-content:flex-end;">
-          <div style="max-width:540px;margin-bottom:24px;">
+        <div id="channel-messages-container" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;">
+          <!-- Channel Welcome Block -->
+          <div style="max-width:540px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F2F4F7;">
             <div style="width:48px;height:48px;border-radius:14px;background:#FFF4ED;display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:#FF6A00;">
               <span style="font-size:24px;font-weight:800;">#</span>
             </div>
             <h2 style="font-size:22px;font-weight:700;color:#101828;margin-bottom:6px;">Welcome to #${escapeHtml(channel.name)}!</h2>
             <p style="font-size:14px;color:#667085;line-height:1.5;">This is the start of the #${escapeHtml(channel.name)} channel. Share messages, files, and collaborate with your workspace teammates.</p>
           </div>
+
+          <!-- Message list -->
+          <div id="messages-list" style="display:flex;flex-direction:column;gap:14px;flex:1;">
+            <div style="color:#98A2B3;font-size:13px;text-align:center;padding:12px 0;">Loading messages...</div>
+          </div>
         </div>
 
         <!-- Chat Input Area -->
-        <div style="padding:16px 24px;border-top:1px solid #EAECF0;background:#ffffff;">
-          <div style="display:flex;align-items:center;gap:10px;background:#F9FAFB;border:1px solid #D0D5DD;border-radius:12px;padding:8px 14px;">
+        <div style="padding:16px 24px;border-top:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
+          <form id="chat-send-form" style="display:flex;align-items:center;gap:10px;background:#F9FAFB;border:1.5px solid #D0D5DD;border-radius:12px;padding:8px 14px;transition:border-color 0.15s ease;">
             <input
               type="text"
+              id="chat-message-input"
               placeholder="Message #${escapeHtml(channel.name)}"
-              style="flex:1;background:none;border:none;outline:none;font-size:14px;color:#101828;font-family:inherit;"
-              onkeydown="if(event.key==='Enter'){window.showHuddleToast('Messaging connection active. Type messages to chat!','info');this.value='';}"
+              style="flex:1;background:none;border:none;outline:none;font-size:14px;color:#101828;font-family:inherit;padding:4px 0;"
+              autocomplete="off"
             />
-            <button type="button" style="background:#FF6A00;border:none;border-radius:8px;padding:6px 12px;color:#fff;font-weight:600;font-size:13px;cursor:pointer;">Send</button>
-          </div>
+            <button
+              type="submit"
+              id="chat-send-btn"
+              style="background:#FF6A00;border:none;border-radius:8px;padding:8px 16px;color:#ffffff;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background 0.15s ease;"
+            >
+              <span>Send</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
         </div>
       </div>
     `;
+
+    const messagesContainer = document.getElementById('channel-messages-container');
+    const messagesList = document.getElementById('messages-list');
+    const chatForm = document.getElementById('chat-send-form');
+    const chatInput = document.getElementById('chat-message-input');
+    const inviteBtn = document.getElementById('channel-invite-btn');
+
+    if (inviteBtn) {
+      inviteBtn.addEventListener('click', () => {
+        openInviteModal();
+      });
+    }
+
+    let isFetching = false;
+    async function loadMessages() {
+      if (isFetching) return;
+      isFetching = true;
+      try {
+        const res = await window.HuddleApi.messages.list(channel.id);
+        const list = res?.data?.messages || res?.messages || res?.data || (Array.isArray(res) ? res : []);
+        renderMessages(list);
+      } catch (err) {
+        console.error('Failed to load messages:', err);
+      } finally {
+        isFetching = false;
+      }
+    }
+
+    function renderMessages(messages) {
+      if (!messagesList) return;
+      if (!messages || messages.length === 0) {
+        messagesList.innerHTML = `
+          <div style="color:#98A2B3;font-size:13px;text-align:center;padding:24px 0;">
+            No messages yet. Say hello to get the conversation started!
+          </div>
+        `;
+        return;
+      }
+
+      const sorted = [...messages].sort((a, b) => new Date(a.created_at || a.createdAt || 0) - new Date(b.created_at || b.createdAt || 0));
+
+      messagesList.innerHTML = sorted.map((msg) => {
+        const isMe = currentUser && (msg.sender_id === currentUser.id || msg.senderId === currentUser.id);
+        const senderName = msg.sender?.fullName || (isMe ? 'You' : 'Teammate');
+        const initial = senderName.charAt(0).toUpperCase();
+        const timeStr = msg.created_at ? formatMessageTime(msg.created_at) : '';
+
+        return `
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:6px 8px;border-radius:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:${isMe ? '#FF6A00' : '#475467'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">
+              ${escapeHtml(initial)}
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;">
+                <span style="font-weight:700;font-size:14px;color:#101828;">${escapeHtml(senderName)}</span>
+                <span style="font-size:12px;color:#98A2B3;">${escapeHtml(timeStr)}</span>
+              </div>
+              <div style="font-size:14px;color:#344054;line-height:1.5;word-break:break-word;">
+                ${escapeHtml(msg.content || '')}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+    }
+
+    function formatMessageTime(dateString) {
+      try {
+        const d = new Date(dateString);
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch {
+        return '';
+      }
+    }
+
+    if (chatForm && chatInput) {
+      chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = chatInput.value.trim();
+        if (!text) return;
+
+        chatInput.value = '';
+
+        try {
+          await window.HuddleApi.messages.send(channel.id, text);
+          await loadMessages();
+        } catch (err) {
+          console.error('Failed to send message:', err);
+          window.showHuddleToast(err.message || 'Failed to send message. Please try again.', 'error');
+        }
+      });
+    }
+
+    await loadMessages();
+    activeMessagePollInterval = setInterval(loadMessages, 3500);
+  }
+
+  function openInviteModal() {
+    let modal = document.getElementById('invite-member-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'invite-member-modal';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(16, 24, 40, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      `;
+      modal.innerHTML = `
+        <div style="background:#ffffff;border-radius:16px;max-width:440px;width:100%;padding:28px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);position:relative;">
+          <button type="button" id="close-invite-modal" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#98A2B3;cursor:pointer;padding:4px;" aria-label="Close modal">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+          <div style="width:48px;height:48px;border-radius:12px;background:#FFF4ED;color:#FF6A00;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7.5" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+          </div>
+          <h3 style="font-size:20px;font-weight:700;color:#101828;margin-bottom:6px;">Invite Teammates</h3>
+          <p style="font-size:14px;color:#667085;margin-bottom:20px;line-height:1.4;">Enter their email address to invite them to this workspace.</p>
+          <form id="send-invite-form" style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label for="invite-email-input" style="display:block;font-size:13px;font-weight:600;color:#344054;margin-bottom:6px;">Email address</label>
+              <input
+                type="email"
+                id="invite-email-input"
+                placeholder="colleague@company.com"
+                required
+                style="width:100%;height:46px;padding:0 14px;border:1.5px solid #D0D5DD;border-radius:10px;font-size:14px;font-family:inherit;outline:none;"
+              />
+            </div>
+            <div style="display:flex;gap:10px;margin-top:8px;">
+              <button type="button" id="cancel-invite-btn" style="flex:1;height:44px;border:1px solid #D0D5DD;background:#fff;color:#344054;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">Cancel</button>
+              <button type="submit" id="submit-invite-btn" style="flex:1;height:44px;border:none;background:#FF6A00;color:#fff;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">Send Invite</button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.querySelector('#close-invite-modal').addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+      modal.querySelector('#cancel-invite-btn').addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.style.display = 'none';
+      });
+
+      modal.querySelector('#send-invite-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const emailInput = modal.querySelector('#invite-email-input');
+        const submitBtn = modal.querySelector('#submit-invite-btn');
+        const email = emailInput?.value.trim();
+        if (!email) return;
+
+        const activeWsId = window.HuddleApi.getActiveWorkspaceId();
+        if (!activeWsId) {
+          window.showHuddleToast('No active workspace selected', 'error');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+
+        try {
+          await window.HuddleApi.invites.send(activeWsId, email);
+          window.showHuddleToast(`Invite sent successfully to ${email}!`, 'success');
+          modal.style.display = 'none';
+          emailInput.value = '';
+        } catch (err) {
+          window.showHuddleToast(err.message || 'Failed to send invite.', 'error');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send Invite';
+        }
+      });
+    }
+
+    modal.style.display = 'flex';
+    const emailInput = modal.querySelector('#invite-email-input');
+    if (emailInput) {
+      emailInput.value = '';
+      emailInput.focus();
+    }
   }
 
   // Initial Load
