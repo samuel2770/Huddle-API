@@ -26,7 +26,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
 @ApiTags('Channels')
 @ApiBearerAuth()
-@Controller('channels')
+@Controller(['channels', 'api/v1/channels'])
 @UseGuards(JwtAuthGuard)
 export class ChannelsController {
   constructor(private readonly channelsService: ChannelsService) {}

@@ -1,0 +1,808 @@
+/* ==========================================================================
+   Huddle Design System & Global Styles
+   ========================================================================== */
+
+:root {
+  /* Color Palette */
+  --color-primary-dark: #202234;
+  --color-subtext: #64748b;
+  --color-accent: #f2711c;
+  --color-accent-hover: #e0600d;
+  --color-accent-focus-ring: rgba(242, 113, 28, 0.18);
+  --color-error: #e63946;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fecaca;
+  --color-error-glow: rgba(230, 57, 70, 0.18);
+  --color-border-default: #e2e8f0;
+  --color-border-hover: #cbd5e1;
+  --color-input-bg: #ffffff;
+  --color-btn-disabled-bg: #f1f2f6;
+  --color-btn-disabled-text: #94a3b8;
+  --color-link-blue: #2563eb;
+  --color-link-blue-hover: #1d4ed8;
+
+  /* Typography */
+  --font-serif: 'Lora', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Transitions */
+  --transition-fast: 160ms ease;
+  --transition-medium: 200ms ease;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-sans);
+  background-color: #ffffff;
+  color: var(--color-primary-dark);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================================
+   Main App Container (Desktop Default ≥1024px)
+   Two-column layout, each exactly 50% width, full viewport height (100vh)
+   ========================================================================== */
+
+.huddle-app {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* --------------------------------------------------------------------------
+   Left Column: Form Column
+   -------------------------------------------------------------------------- */
+.form-column {
+  flex: 0 0 50%;
+  width: 50vw;
+  max-width: 50vw;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  position: relative;
+}
+
+.form-inner-container {
+  width: 100%;
+  max-width: 460px;
+  height: 100%;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 44px 40px 32px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* --------------------------------------------------------------------------
+   Header: Logo & Language Selector
+   -------------------------------------------------------------------------- */
+.form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 28px;
+}
+
+.brand-logo {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  text-decoration: none;
+  letter-spacing: -0.6px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: baseline;
+  user-select: none;
+}
+
+.brand-dot {
+  color: var(--color-accent);
+  margin-left: 1px;
+  font-weight: 800;
+  display: inline-block;
+}
+
+.lang-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  user-select: none;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.lang-selector:hover,
+.lang-selector:focus-visible {
+  background-color: #f1f5f9;
+  color: var(--color-primary-dark);
+  outline: none;
+}
+
+.lang-selector .chevron-icon {
+  color: #64748b;
+  transition: transform var(--transition-fast);
+}
+
+.lang-selector:hover .chevron-icon {
+  transform: translateY(1px);
+}
+
+/* --------------------------------------------------------------------------
+   Form Body: Headings, Banner, Inputs
+   -------------------------------------------------------------------------- */
+.form-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: center;
+  margin: auto 0;
+}
+
+.form-headings {
+  margin-bottom: 22px;
+}
+
+.welcome-heading {
+  font-family: var(--font-serif);
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  letter-spacing: -0.6px;
+  line-height: 1.18;
+  margin-bottom: 8px;
+}
+
+.welcome-subheading {
+  font-size: 14.5px;
+  color: var(--color-subtext);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* --------------------------------------------------------------------------
+   Error Banner (Hidden by default, shown on auth failure)
+   -------------------------------------------------------------------------- */
+.error-banner {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: 10px;
+  margin-bottom: 20px;
+  color: var(--color-error);
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  animation: bannerSlideIn 180ms ease forwards;
+}
+
+.error-banner.visible {
+  display: flex;
+}
+
+.error-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-error);
+}
+
+@keyframes bannerSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Form Fields & Groups
+   -------------------------------------------------------------------------- */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.field-group {
+  margin-bottom: 18px;
+  transition: opacity var(--transition-medium);
+}
+
+.field-label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  margin-bottom: 7px;
+  letter-spacing: -0.1px;
+}
+
+.required-asterisk {
+  color: var(--color-accent);
+  margin-left: 2px;
+  font-weight: 700;
+}
+
+/* Input Container & Focus Ring */
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 48px;
+  border: 1.5px solid var(--color-border-default);
+  border-radius: 12px;
+  background-color: var(--color-input-bg);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+.input-wrapper:hover {
+  border-color: var(--color-border-hover);
+}
+
+/* Focus Ring: Orange / Warm Glow */
+.input-wrapper.focused,
+.input-wrapper:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3.5px var(--color-accent-focus-ring);
+}
+
+/* Error State on Input: Red Border + Red Glow */
+.input-wrapper.error,
+.field-group.error .input-wrapper {
+  border-color: var(--color-error) !important;
+  box-shadow: 0 0 0 3.5px var(--color-error-glow) !important;
+}
+
+/* Left Icon Slot */
+.input-icon-slot {
+  position: absolute;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  color: #94a3b8;
+  transition: color var(--transition-fast);
+}
+
+.input-wrapper.focused .input-icon-slot,
+.input-wrapper:focus-within .input-icon-slot {
+  color: var(--color-accent);
+}
+
+.input-wrapper.error .input-icon-slot,
+.field-group.error .input-icon-slot {
+  color: var(--color-error);
+}
+
+/* Icon Switching for Email: Mail ↔ Person */
+.icon-mail {
+  display: block;
+}
+
+.icon-person {
+  display: none;
+}
+
+.input-wrapper.show-person-icon .icon-mail {
+  display: none;
+}
+
+.input-wrapper.show-person-icon .icon-person {
+  display: block;
+  color: var(--color-accent);
+}
+
+/* Input Text Element */
+.text-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 16px 0 44px;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  color: var(--color-primary-dark);
+  border-radius: 12px;
+  caret-color: var(--color-accent);
+}
+
+.text-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+/* Password field with eye toggle button */
+#password-field-group .text-input {
+  padding-right: 46px;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  outline: none;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.toggle-password-btn:hover,
+.toggle-password-btn:focus-visible {
+  color: var(--color-primary-dark);
+  background-color: #f1f5f9;
+}
+
+.icon-eye-closed {
+  display: none;
+}
+
+.toggle-password-btn.showing-password .icon-eye-open {
+  display: none;
+}
+
+.toggle-password-btn.showing-password .icon-eye-closed {
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   Password Muted State (when email field is empty and focused)
+   Cosmetic only: de-emphasize password field
+   -------------------------------------------------------------------------- */
+#password-field-group.muted {
+  opacity: 0.42;
+  filter: grayscale(0.2);
+}
+
+#password-field-group.muted .input-wrapper {
+  background-color: #fafbfd;
+  border-color: #e8ecf2;
+}
+
+/* --------------------------------------------------------------------------
+   Forgot Password Link
+   -------------------------------------------------------------------------- */
+.forgot-password-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -6px;
+  margin-bottom: 22px;
+}
+
+.forgot-password-link {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-link-blue);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.forgot-password-link:hover,
+.forgot-password-link:focus-visible {
+  color: var(--color-link-blue-hover);
+  text-decoration: underline;
+  outline: none;
+}
+
+/* Spacer for mobile flex layout */
+.mobile-flexible-spacer {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Bottom Actions: Sign Up Prompt + Continue Button + Footer
+   -------------------------------------------------------------------------- */
+.form-bottom-actions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.signup-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--color-subtext);
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.signup-link {
+  color: var(--color-accent);
+  font-weight: 700;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.signup-link:hover,
+.signup-link:focus-visible {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+  outline: none;
+}
+
+/* Continue Button */
+.continue-btn {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  background-color: var(--color-btn-disabled-bg);
+  color: var(--color-btn-disabled-text);
+  cursor: not-allowed;
+  pointer-events: none;
+  transition: background-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), transform 120ms ease;
+  user-select: none;
+}
+
+/* Active State */
+.continue-btn.active,
+.continue-btn:not(:disabled) {
+  background-color: var(--color-accent);
+  color: #ffffff;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgba(242, 113, 28, 0.28);
+}
+
+.continue-btn.active:hover,
+.continue-btn:not(:disabled):hover {
+  background-color: var(--color-accent-hover);
+  box-shadow: 0 6px 18px rgba(242, 113, 28, 0.35);
+  transform: translateY(-1px);
+}
+
+.continue-btn.active:active,
+.continue-btn:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.continue-btn:focus-visible {
+  box-shadow: 0 0 0 3.5px var(--color-accent-focus-ring);
+}
+
+/* Loading Spinner on button (during simulated check) */
+.btn-spinner {
+  display: none;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: btnSpin 600ms linear infinite;
+}
+
+.continue-btn.loading .btn-spinner {
+  display: inline-block;
+}
+
+.continue-btn.loading .btn-text {
+  opacity: 0.85;
+}
+
+@keyframes btnSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Footer Copyright */
+.form-footer {
+  text-align: center;
+  margin-top: 14px;
+  padding: 4px 0 0 0;
+}
+
+.footer-copyright {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+/* --------------------------------------------------------------------------
+   Right Column: Lifestyle Photo (≥1024px)
+   Object-fit: cover, object-position: center, no distortion
+   -------------------------------------------------------------------------- */
+.image-column {
+  flex: 0 0 50%;
+  width: 50vw;
+  max-width: 50vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background-color: #1e242b;
+}
+
+.lifestyle-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.image-column-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02) 0%, rgba(0, 0, 0, 0.08) 100%);
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Success Modal (Demo feedback)
+   -------------------------------------------------------------------------- */
+.success-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.success-modal.open {
+  display: flex;
+}
+
+.success-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 32px 28px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+  animation: bannerSlideIn 220ms ease forwards;
+}
+
+.success-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px auto;
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+}
+
+.success-title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  color: var(--color-primary-dark);
+  margin-bottom: 8px;
+}
+
+.success-message {
+  font-size: 14px;
+  color: var(--color-subtext);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.success-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.success-btn:hover {
+  background: var(--color-accent-hover);
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+/* Tablet (768px – 1023px):
+   Same two-column structure; image column may shrink proportionally,
+   form retains a readable minimum width.
+   ========================================================================== */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .huddle-app {
+    height: 100vh;
+  }
+
+  .form-column {
+    flex: 0 0 52%;
+    width: 52%;
+    max-width: 52%;
+    min-width: 380px;
+    height: 100vh;
+  }
+
+  .form-inner-container {
+    padding: 36px 32px 28px 32px;
+    max-width: 420px;
+  }
+
+  .welcome-heading {
+    font-size: 30px;
+  }
+
+  .image-column {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    height: 100vh;
+  }
+}
+
+/* Mobile (<768px):
+   Only the form column renders. Image column is fully excluded via media query.
+   Content flows top-to-bottom with ~20–24px side padding:
+   header → heading → subheading → error banner → email field → password field →
+   forgot password link → flexible space → sign-up prompt → Continue button → footer.
+   Use flexbox so Continue button + footer sit pinned near bottom of viewport.
+   ========================================================================== */
+@media (max-width: 767.98px) {
+  /* Fully exclude image column from rendering */
+  .image-column {
+    display: none !important;
+  }
+
+  .huddle-app {
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: auto;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-column {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
+    padding: 24px 22px 20px 22px;
+  }
+
+  .form-inner-container {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+    min-height: calc(100vh - 44px);
+    min-height: calc(100dvh - 44px);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .form-header {
+    margin-bottom: 24px;
+    flex-shrink: 0;
+  }
+
+  .brand-logo {
+    font-size: 26px;
+  }
+
+  .form-body {
+    flex: 1 1 auto;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .form-headings {
+    margin-bottom: 20px;
+  }
+
+  .welcome-heading {
+    font-size: 28px;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+
+  .welcome-subheading {
+    font-size: 14px;
+  }
+
+  .login-form {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .forgot-password-container {
+    margin-bottom: 12px;
+  }
+
+  /* Flexible space pushes bottom section to the bottom on mobile */
+  .mobile-flexible-spacer {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 24px;
+  }
+
+  /* Pin Continue button + footer near the bottom of the viewport */
+  .form-bottom-actions {
+    margin-top: auto;
+    flex-shrink: 0;
+    padding-top: 12px;
+  }
+
+  .signup-prompt {
+    margin-bottom: 16px;
+  }
+
+  .continue-btn {
+    height: 50px;
+    font-size: 15.5px;
+  }
+
+  .form-footer {
+    margin-top: 14px;
+    padding: 2px 0 0 0;
+  }
+}

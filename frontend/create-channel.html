@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Huddle — Create Channel</title>
+  <meta name="description" content="Create a new channel in Huddle. Set channel details, choose visibility, and invite your team.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="create-channel.css">
+</head>
+<body>
+  <div class="channel-viewport-wrapper">
+    
+    <!-- Mobile Breadcrumb Context Label above Top Bar -->
+    <div class="mobile-context-label-bar" id="mobile-context-label-bar">
+      <span class="mobile-context-text" id="mobile-context-text">Create channel</span>
+    </div>
+
+    <!-- Mobile Top Navigation Bar (<768px) -->
+    <header class="mobile-top-bar" id="mobile-top-bar">
+      <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open sidebar drawer">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+      <div class="mobile-brand">
+        huddle<span class="brand-dot">.</span>
+      </div>
+      <button type="button" class="mobile-search-btn" id="mobile-search-btn" aria-label="Search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Mobile Drawer Backdrop Overlay -->
+    <div class="drawer-backdrop" id="drawer-backdrop" aria-hidden="true"></div>
+
+    <!-- Main Outer Mockup Container (Rounded, Shadowed) -->
+    <div class="channel-app-frame" id="channel-app-frame">
+      
+      <!-- Left Sidebar: Dark Navy -->
+      <aside class="dashboard-sidebar" id="dashboard-sidebar" aria-label="Workspace navigation">
+        
+        <!-- Sidebar Top Section -->
+        <div class="sidebar-top">
+          
+          <!-- Brand Row -->
+          <div class="sidebar-brand-row">
+            <a href="dashboard.html" class="sidebar-brand-logo" aria-label="Huddle home">
+              huddle<span class="brand-dot">.</span>
+            </a>
+            <button type="button" class="mobile-drawer-close-btn" id="drawer-close-btn" aria-label="Close sidebar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="sidebar-search-container">
+            <div class="sidebar-search-wrapper">
+              <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input
+                type="text"
+                class="sidebar-search-input"
+                id="sidebar-search-input"
+                placeholder="Search"
+                aria-label="Search channels and workspaces"
+                autocomplete="off"
+              >
+            </div>
+          </div>
+
+          <!-- Workspace Switcher Section & Popover -->
+          <div class="workspace-switcher-wrapper">
+            <button
+              type="button"
+              class="workspace-switcher-row"
+              id="workspace-switcher-trigger"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="workspace-popover"
+            >
+              <div class="workspace-avatar" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+              </div>
+              <span class="workspace-name-text">Grace's Workspace</span>
+              <svg class="switcher-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <!-- Workspace Popover -->
+            <div
+              class="workspace-popover"
+              id="workspace-popover"
+              role="menu"
+              aria-label="Workspace options"
+              aria-hidden="true"
+            >
+              <div class="popover-row-header" role="none">
+                <div class="popover-avatar-lg" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  </svg>
+                </div>
+                <span class="popover-workspace-title">Grace's Workspace</span>
+              </div>
+
+              <div class="popover-new-divider">
+                <span class="new-label">NEW</span>
+                <div class="divider-line"></div>
+              </div>
+
+              <a href="dashboard.html" class="popover-item-btn" id="sidebar-join-link" role="menuitem">
+                <div class="popover-icon-wrapper" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 19a6 6 0 0 0-12 0"></path>
+                    <circle cx="8" cy="9" r="4"></circle>
+                    <path d="M17 9l4 3-4 3"></path>
+                    <line x1="14" y1="12" x2="21" y2="12"></line>
+                  </svg>
+                </div>
+                <span class="popover-item-label">Join a Workspace</span>
+              </a>
+
+              <a href="dashboard.html" class="popover-item-btn primary-action-row" id="sidebar-create-link" role="menuitem">
+                <div class="popover-badge-plus" aria-hidden="true">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </div>
+                <span class="popover-item-label">Create a new workspace</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Sidebar Channels & DMs Sections (Shown once channels exist) -->
+          <div class="sidebar-sections-wrapper" id="sidebar-sections-wrapper">
+            <!-- CHANNEL Section -->
+            <div class="sidebar-nav-section" id="sidebar-channel-section">
+              <div class="sidebar-section-header">
+                <span class="section-title">CHANNEL</span>
+                <button type="button" class="section-add-btn" id="sidebar-add-channel-btn" aria-label="Create channel" title="Create a channel">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </button>
+              </div>
+              <ul class="sidebar-channels-list" id="sidebar-channels-list">
+                <!-- Dynamically rendered channels -->
+              </ul>
+            </div>
+
+            <!-- DMS Section -->
+            <div class="sidebar-nav-section" id="sidebar-dms-section">
+              <div class="sidebar-section-header">
+                <span class="section-title">DMS</span>
+                <button type="button" class="section-add-btn" id="sidebar-add-dm-btn" aria-label="Start direct message" title="New Direct Message">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Middle Flexible Space -->
+        <div class="sidebar-spacer"></div>
+
+        <!-- Sidebar Bottom Section -->
+        <div class="sidebar-bottom">
+          <a href="index.html" class="sidebar-logout-row" id="sidebar-logout-btn" role="button">
+            <svg class="logout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span class="logout-text">Log out</span>
+          </a>
+
+          <hr class="sidebar-divider" aria-hidden="true">
+
+          <div class="sidebar-user-row">
+            <div class="user-avatar-circle" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+            </div>
+            <div class="user-info-text">
+              <span class="user-name">Grace Abdul</span>
+              <span class="user-email" title="grace@teamname.com">grace@teamname...</span>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Right Main Content Area -->
+      <main class="channel-main-content" id="channel-main-content">
+        
+        <!-- STEP 1: Channel details Form -->
+        <div class="channel-card-container" id="channel-details-section">
+          <!-- Header Icon: Rounded square, solid orange, white "#" glyph -->
+          <div class="channel-header-icon" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="9" x2="20" y2="9"></line>
+              <line x1="4" y1="15" x2="20" y2="15"></line>
+              <line x1="10" y1="3" x2="8" y2="21"></line>
+              <line x1="16" y1="3" x2="14" y2="21"></line>
+            </svg>
+          </div>
+
+          <!-- Heading & Subheading -->
+          <h1 class="channel-heading">Channel details</h1>
+          <p class="channel-subheading">Enter channel details and invite members</p>
+
+          <!-- Form Content -->
+          <form id="create-channel-form" class="channel-form" novalidate onsubmit="return false;">
+            <!-- Channel Name Field -->
+            <div class="channel-field-group">
+              <label for="channel-name-input" class="channel-field-label">
+                Channel name<span class="required-asterisk" aria-hidden="true">*</span>
+              </label>
+
+              <div class="channel-input-wrapper focused" id="channel-input-wrapper">
+                <span class="channel-prefix-hash" aria-hidden="true">#</span>
+                <input
+                  type="text"
+                  id="channel-name-input"
+                  class="channel-text-input"
+                  placeholder="e.g Department"
+                  value="Department"
+                  autocomplete="off"
+                  spellcheck="false"
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Channel Type Selection: Public & Private Cards -->
+            <div class="channel-type-section">
+              <fieldset class="channel-type-fieldset">
+                <legend class="sr-only">Select channel privacy type</legend>
+                
+                <div class="channel-type-grid">
+                  <!-- Public Channel Card -->
+                  <div
+                    class="channel-type-card"
+                    id="card-public-channel"
+                    tabindex="0"
+                    role="radio"
+                    aria-checked="false"
+                    data-type="public"
+                  >
+                    <div class="card-left-content">
+                      <div class="card-type-icon" aria-hidden="true">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="9" cy="7" r="4"></circle>
+                          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                      </div>
+                      <div class="card-text-block">
+                        <h2 class="card-type-title">Public Channel</h2>
+                        <p class="card-type-desc">For anyone in the team</p>
+                      </div>
+                    </div>
+                    <div class="card-radio-slot" aria-hidden="true">
+                      <div class="channel-radio-circle">
+                        <div class="radio-inner-dot"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Private Channel Card (Faint background tint ~#f8f9fb) -->
+                  <div
+                    class="channel-type-card private-tint"
+                    id="card-private-channel"
+                    tabindex="0"
+                    role="radio"
+                    aria-checked="false"
+                    data-type="private"
+                  >
+                    <div class="card-left-content">
+                      <div class="card-type-icon" aria-hidden="true">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                      </div>
+                      <div class="card-text-block">
+                        <h2 class="card-type-title">Private Channel</h2>
+                        <p class="card-type-desc">Only invited members</p>
+                      </div>
+                    </div>
+                    <div class="card-radio-slot" aria-hidden="true">
+                      <div class="channel-radio-circle">
+                        <div class="radio-inner-dot"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+
+            <!-- Action Buttons Row -->
+            <div class="channel-actions-row">
+              <button type="button" class="channel-action-btn channel-back-btn" id="channel-back-btn">
+                Back
+              </button>
+              <button type="submit" class="channel-action-btn channel-next-btn" id="channel-next-btn" disabled>
+                Next
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- STEP 2: Add team members Form -->
+        <div class="channel-card-container" id="channel-members-section" style="display: none;">
+          <!-- Header Icon: Rounded square (~48-56px), solid orange (~#f2711c), white people/team icon (two-person silhouette) -->
+          <div class="channel-header-icon members-icon-box" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+
+          <!-- Heading & Subheading -->
+          <h1 class="channel-heading">Add team members</h1>
+          <p class="channel-subheading">Invite members from into your Huddle team</p>
+
+          <!-- Form Content -->
+          <form id="add-members-form" class="channel-form" novalidate onsubmit="return false;">
+            <!-- Invite Members Field -->
+            <div class="channel-field-group">
+              <label for="invite-email-input" class="channel-field-label">
+                Invite members<span class="required-asterisk" aria-hidden="true">*</span>
+              </label>
+
+              <!-- Input with small "@" icon on left, no placeholder, warm focus ring -->
+              <div class="channel-input-wrapper members-input-wrapper focused" id="invite-input-wrapper">
+                <span class="channel-prefix-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"></path>
+                  </svg>
+                </span>
+                <input
+                  type="text"
+                  id="invite-email-input"
+                  class="channel-text-input members-text-input"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="invite-helper-text"
+                >
+              </div>
+
+              <!-- Helper text below: small gray info "i" icon + muted text -->
+              <div class="channel-helper-row" id="invite-helper-text">
+                <div class="helper-info-icon" aria-hidden="true">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                </div>
+                <span class="helper-text">Enter email addresses separated by commas</span>
+              </div>
+
+              <!-- Invited-members chip list (below helper text, wraps as needed) -->
+              <div class="members-chip-list" id="members-chip-list" aria-live="polite" aria-label="Invited members list">
+                <!-- Chips rendered dynamically via JS -->
+              </div>
+            </div>
+
+            <!-- Action Buttons Row -->
+            <div class="channel-actions-row members-actions-row">
+              <button type="button" class="channel-action-btn channel-back-btn" id="members-back-btn">
+                Back
+              </button>
+              <button type="submit" class="channel-action-btn channel-next-btn members-submit-btn" id="members-submit-btn">
+                <span class="submit-btn-text" id="submit-btn-text">Create channel</span>
+                <div class="submit-spinner" id="submit-spinner" aria-hidden="true"></div>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- STEP 3: Channel Created Success State -->
+        <div class="channel-success-container" id="channel-success-section" style="display: none;">
+          <!-- Icon: Rounded square (~48-56px), solid green background, white checkmark -->
+          <div class="success-check-icon-box" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+
+          <!-- Heading: #Department in orange, has been created in dark navy -->
+          <h1 class="channel-success-heading">
+            <span class="success-channel-tag" id="success-channel-name">#Department</span>
+            <span class="success-heading-rest">has been created</span>
+          </h1>
+
+          <!-- Body text -->
+          <p class="channel-success-body">
+            Head over to your channel to kickstart your team collaboration
+          </p>
+
+          <!-- Two stacked buttons centered (max-width ~250-280px) -->
+          <div class="channel-success-actions">
+            <!-- Pale orange tint button -->
+            <button type="button" class="success-btn success-btn-visit" id="visit-channel-btn">
+              Visit your new channel
+            </button>
+            <!-- Solid orange primary button -->
+            <button type="button" class="success-btn success-btn-create-another" id="create-another-btn">
+              Create another channel
+            </button>
+          </div>
+        </div>
+
+      </main>
+
+    </div>
+
+    <!-- Notification Dialog for General Demo Feedback -->
+    <div class="action-dialog" id="action-dialog" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="action-dialog-card">
+        <div class="action-dialog-icon" id="action-dialog-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <h2 class="action-dialog-title" id="action-dialog-title">Notification</h2>
+        <p class="action-dialog-message" id="action-dialog-message">Details</p>
+        <button type="button" class="action-dialog-close-btn" id="action-dialog-close-btn">Continue</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="create-channel.js"></script>
+</body>
+</html>

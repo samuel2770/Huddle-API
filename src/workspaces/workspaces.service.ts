@@ -180,4 +180,46 @@ export class WorkspacesService {
 
     return membership;
   }
+
+  async join(
+    identifier: string,
+    userId: string,
+  ): Promise<Workspace> {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        identifier,
+      );
+
+    let workspace: Workspace | null = null;
+    if (isUuid) {
+      workspace = await this.workspaceRepository.findOne({
+        where: { id: identifier },
+      });
+    }
+
+    if (!workspace) {
+      workspace = await this.workspaceRepository.findOne({
+        where: { slug: identifier },
+      });
+    }
+
+    if (!workspace) {
+      throw new NotFoundException(`Workspace "${identifier}" not found`);
+    }
+
+    const existing = await this.memberRepository.findOne({
+      where: { workspace_id: workspace.id, user_id: userId },
+    });
+
+    if (!existing) {
+      const member = this.memberRepository.create({
+        workspace_id: workspace.id,
+        user_id: userId,
+        role: WorkspaceRole.MEMBER,
+      });
+      await this.memberRepository.save(member);
+    }
+
+    return workspace;
+  }
 }
