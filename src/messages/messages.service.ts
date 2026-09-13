@@ -46,7 +46,7 @@ export class MessagesService {
       );
     }
 
-    const membership = await this.memberRepository.findOne({
+    let membership = await this.memberRepository.findOne({
       where: {
         channel_id: channelId,
         user_id: userId,
@@ -54,7 +54,17 @@ export class MessagesService {
     });
 
     if (!membership) {
-      throw new ForbiddenException('You are not a member of this channel');
+      if (channel.type === ChannelType.PUBLIC) {
+        membership = this.memberRepository.create({
+          channel_id: channelId,
+          user_id: userId,
+          unread_count: 0,
+          joined_at: new Date(),
+        });
+        await this.memberRepository.save(membership);
+      } else {
+        throw new ForbiddenException('You are not a member of this channel');
+      }
     }
 
     const replyToId = dto.getReplyToId();

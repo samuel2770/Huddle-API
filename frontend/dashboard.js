@@ -909,10 +909,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.HuddleApi.setActiveWorkspaceName(activeWs.name);
         renderWorkspaceUI(activeWs, workspaces);
         await loadWorkspaceChannels(activeWs.id);
+        knownWorkspaceCount = workspaces.length;
+        startBackgroundWorkspaceSync();
       }
     } catch (err) {
       console.error('[Huddle] Error during workspace initialization:', err);
     }
+  }
+
+  let knownWorkspaceCount = 0;
+  let workspaceSyncInterval = null;
+
+  function startBackgroundWorkspaceSync() {
+    if (workspaceSyncInterval) clearInterval(workspaceSyncInterval);
+    workspaceSyncInterval = setInterval(async () => {
+      try {
+        const latest = await window.HuddleApi.workspaces.list();
+        if (!latest || latest.length === 0) return;
+
+        if (knownWorkspaceCount > 0 && latest.length > knownWorkspaceCount) {
+          const newWs = latest[latest.length - 1];
+          window.showHuddleToast(
+            `🎉 You were added to "${newWs.name}"! Click the workspace dropdown at top left to switch.`,
+            'info',
+            7000,
+          );
+        }
+        knownWorkspaceCount = latest.length;
+
+        const currentActiveId = window.HuddleApi.getActiveWorkspaceId();
+        const activeWs = latest.find((w) => w.id === currentActiveId) || latest[0];
+        renderWorkspaceUI(activeWs, latest);
+
+        // Also check if current workspace's channel list has new channels
+        const channels = await window.HuddleApi.channels.list(activeWs.id);
+        if (channels && sidebarChannelsList) {
+          const currentCount = sidebarChannelsList.querySelectorAll('.sidebar-channel-item').length;
+          if (channels.length !== currentCount) {
+            renderChannelsList(channels);
+          }
+        }
+      } catch {}
+    }, 3500);
   }
 
   function renderWorkspaceUI(activeWs, allWorkspaces) {
@@ -922,7 +960,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.title = `Huddle — ${activeWs.name}`;
 
     const triggerNameEl = document.querySelector('.workspace-name-text');
-    if (triggerNameEl) triggerNameEl.textContent = activeWs.name;
+    if (triggerNameEl) {
+      triggerNameEl.textContent = activeWs.name;
+      // Remove any existing badge
+      const existingBadge = document.getElementById('sidebar-ws-count-badge');
+      if (existingBadge) existingBadge.remove();
+      if (allWorkspaces && allWorkspaces.length > 1) {
+        const badge = document.createElement('span');
+        badge.id = 'sidebar-ws-count-badge';
+        badge.style.cssText = 'background:#FF6A00;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:auto;margin-right:6px;flex-shrink:0;';
+        badge.textContent = `${allWorkspaces.length} WS`;
+        badge.title = `${allWorkspaces.length} workspaces available. Click to switch.`;
+        triggerNameEl.parentNode?.insertBefore(badge, triggerNameEl.nextSibling);
+      }
+    }
 
     const popoverTitleEl = document.querySelector('.popover-workspace-title');
     if (popoverTitleEl) popoverTitleEl.textContent = activeWs.name;
@@ -942,18 +993,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const otherWorkspaces = (allWorkspaces || []).filter((w) => w.id !== activeWs.id);
 
     if (otherWorkspaces.length > 0) {
+      const sectionHeading = document.createElement('div');
+      sectionHeading.style.cssText = 'font-size:11px;font-weight:700;text-transform:uppercase;color:#98A2B3;letter-spacing:0.5px;padding:10px 16px 4px;';
+      sectionHeading.textContent = `Switch Workspace (${otherWorkspaces.length})`;
+      existingOthersList.appendChild(sectionHeading);
+
       otherWorkspaces.forEach((w) => {
         const itemBtn = document.createElement('button');
         itemBtn.type = 'button';
         itemBtn.className = 'popover-item-btn';
         itemBtn.style.padding = '8px 16px';
         itemBtn.innerHTML = `
-          <div class="popover-avatar-lg" style="width:24px;height:24px;font-size:12px;" aria-hidden="true">
+          <div class="popover-avatar-lg" style="width:24px;height:24px;font-size:12px;background:#F2F4F7;color:#344054;" aria-hidden="true">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>
           </div>
-          <span class="popover-item-label" style="font-size:13px;font-weight:600;">${escapeHtml(w.name)}</span>
+          <span class="popover-item-label" style="font-size:13px;font-weight:600;flex:1;text-align:left;">${escapeHtml(w.name)}</span>
+          <span style="font-size:11px;color:#FF6A00;font-weight:700;">Switch →</span>
         `;
 
         itemBtn.addEventListener('click', async () => {
@@ -1077,7 +1134,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       <div style="display:flex;flex-direction:column;height:100%;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;">
         <!-- Channel Header -->
         <header style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
-          <div style="display:flex;align-items:center;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="display:inline-flex;padding:3px 8px;border-radius:6px;background:#FFF4ED;color:#FF6A00;font-size:12px;font-weight:700;">
+              ${escapeHtml(window.HuddleApi.getActiveWorkspaceName() || 'Workspace')}
+            </span>
             <span style="font-size:20px;font-weight:700;color:#101828;">#${escapeHtml(channel.name)}</span>
             <span style="display:inline-flex;padding:2px 8px;border-radius:12px;background:#F2F4F7;color:#344054;font-size:12px;font-weight:600;text-transform:capitalize;">
               ${escapeHtml(channel.type || 'public')}
@@ -1100,45 +1160,43 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <line x1="20" y1="8" x2="20" y2="14"></line>
                 <line x1="23" y1="11" x2="17" y2="11"></line>
               </svg>
-              + Add Member
+              <span>+ Add</span>
             </button>
           </div>
         </header>
 
         <!-- Channel Chat Messages Area -->
         <div id="channel-messages-container" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;">
-          <!-- Channel Welcome Block -->
-          <div style="max-width:540px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F2F4F7;">
-            <div style="width:48px;height:48px;border-radius:14px;background:#FFF4ED;display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:#FF6A00;">
-              <span style="font-size:24px;font-weight:800;">#</span>
-            </div>
-            <h2 style="font-size:22px;font-weight:700;color:#101828;margin-bottom:6px;">Welcome to #${escapeHtml(channel.name)}!</h2>
+          <!-- Welcome Message -->
+          <div style="background:#F9FAFB;border:1px solid #EAECF0;border-radius:12px;padding:20px 24px;">
+            <div style="font-size:24px;margin-bottom:6px;">👋</div>
+            <h3 style="font-size:16px;font-weight:700;color:#101828;margin-bottom:4px;">Welcome to #${escapeHtml(channel.name)}!</h3>
             <p style="font-size:14px;color:#667085;line-height:1.5;">This is the start of the #${escapeHtml(channel.name)} channel. Share messages, files, and collaborate with your workspace teammates.</p>
           </div>
 
-          <!-- Message list -->
+          <!-- Messages List Stream -->
           <div id="messages-list" style="display:flex;flex-direction:column;gap:14px;flex:1;">
             <div style="color:#98A2B3;font-size:13px;text-align:center;padding:12px 0;">Loading messages...</div>
           </div>
         </div>
 
-        <!-- Chat Input Area -->
-        <div style="padding:16px 24px;border-top:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
-          <form id="chat-send-form" style="display:flex;align-items:center;gap:10px;background:#F9FAFB;border:1.5px solid #D0D5DD;border-radius:12px;padding:8px 14px;transition:border-color 0.15s ease;">
+        <!-- Chat Input Bar -->
+        <div style="padding:16px 24px 20px;border-top:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
+          <form id="channel-chat-form" style="display:flex;align-items:center;gap:10px;background:#F9FAFB;border:1px solid #D0D5DD;border-radius:12px;padding:8px 12px;transition:border-color 0.15s ease;">
             <input
               type="text"
-              id="chat-message-input"
-              placeholder="Message #${escapeHtml(channel.name)}"
-              style="flex:1;background:none;border:none;outline:none;font-size:14px;color:#101828;font-family:inherit;padding:4px 0;"
+              id="channel-chat-input"
+              placeholder="Message #${escapeHtml(channel.name)}..."
               autocomplete="off"
+              style="flex:1;border:none;background:transparent;outline:none;font-size:14px;color:#101828;padding:4px 6px;"
             />
             <button
               type="submit"
-              id="chat-send-btn"
-              style="background:#FF6A00;border:none;border-radius:8px;padding:8px 16px;color:#ffffff;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background 0.15s ease;"
+              id="channel-chat-send-btn"
+              style="background:#FF6A00;color:#ffffff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background 0.15s ease;"
             >
               <span>Send</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
               </svg>
@@ -1150,10 +1208,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const messagesContainer = document.getElementById('channel-messages-container');
     const messagesList = document.getElementById('messages-list');
-    const chatForm = document.getElementById('chat-send-form');
-    const chatInput = document.getElementById('chat-message-input');
+    const chatForm = document.getElementById('channel-chat-form');
+    const chatInput = document.getElementById('channel-chat-input');
     const inviteBtn = document.getElementById('channel-invite-btn');
     const membersCountBtn = document.getElementById('channel-members-count-btn');
+    const membersCountText = document.getElementById('channel-members-count-text');
 
     if (inviteBtn) {
       inviteBtn.addEventListener('click', () => {
@@ -1164,13 +1223,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadChannelMembers() {
       try {
         const members = await window.HuddleApi.channels.getMembers(channel.id);
-        const countText = document.getElementById('channel-members-count-text');
-        if (countText && members) {
-          countText.textContent = `${members.length} ${members.length === 1 ? 'member' : 'members'}`;
+        if (membersCountText && Array.isArray(members)) {
+          membersCountText.textContent = `${members.length} Member${members.length === 1 ? '' : 's'}`;
         }
         return members;
-      } catch (err) {
-        console.warn('Could not load channel members count:', err);
+      } catch {
         return [];
       }
     }
@@ -1187,13 +1244,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadChannelMembers();
 
     let isFetching = false;
+    let lastRenderedMessagesKey = '';
+
     async function loadMessages() {
       if (isFetching) return;
       isFetching = true;
       try {
         const res = await window.HuddleApi.messages.list(channel.id);
         const list = res?.data?.messages || res?.messages || res?.data || (Array.isArray(res) ? res : []);
-        renderMessages(list);
+        const key = list.map((m) => `${m.id}_${m.content || ''}_${m.created_at || m.createdAt}`).join('|');
+        if (key !== lastRenderedMessagesKey) {
+          lastRenderedMessagesKey = key;
+          renderMessages(list);
+        }
       } catch (err) {
         console.error('Failed to load messages:', err);
       } finally {
@@ -1269,6 +1332,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
           await window.HuddleApi.messages.send(channel.id, text);
+          lastRenderedMessagesKey = '';
           await loadMessages();
         } catch (err) {
           console.error('Failed to send message:', err);
@@ -1278,7 +1342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await loadMessages();
-    activeMessagePollInterval = setInterval(loadMessages, 3500);
+    activeMessagePollInterval = setInterval(loadMessages, 1500);
   }
 
   function openInviteModal() {
