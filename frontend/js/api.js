@@ -275,6 +275,27 @@
       },
     },
 
+    users: {
+      async getMe() {
+        return ApiClient.request('/api/v1/users/me');
+      },
+
+      async updateProfile(profileData) {
+        return ApiClient.request('/api/v1/users/me', {
+          method: 'PATCH',
+          body: profileData,
+        });
+      },
+
+      async search(query) {
+        return ApiClient.request(`/api/v1/users/search?q=${encodeURIComponent(query)}`);
+      },
+
+      async getByUsername(username) {
+        return ApiClient.request(`/api/v1/users/by-username/${encodeURIComponent(username.replace(/^@/, ''))}`);
+      },
+    },
+
     workspaces: {
       async list() {
         return ApiClient.request('/api/v1/workspaces');
@@ -335,17 +356,38 @@
         return ApiClient.request(`/channels/${channelId}`);
       },
 
-      async addMember(channelId, userId) {
+      async getMembers(channelId) {
+        return ApiClient.request(`/channels/${channelId}/members`);
+      },
+
+      async addMember(channelId, target) {
+        const body = typeof target === 'object' ? target : (
+          typeof target === 'string' && target.includes('-') && target.length === 36
+            ? { userId: target }
+            : { username: target.replace(/^@/, '') }
+        );
         return ApiClient.request(`/channels/${channelId}/members`, {
           method: 'POST',
-          body: { userId },
+          body,
         });
       },
 
-      async addMembers(channelId, userIds) {
+      async addMembers(channelId, targets) {
+        const userIds = [];
+        const usernames = [];
+        (targets || []).forEach((t) => {
+          if (typeof t === 'object') {
+            if (t.userId) userIds.push(t.userId);
+            if (t.username) usernames.push(t.username.replace(/^@/, ''));
+          } else if (typeof t === 'string' && t.includes('-') && t.length === 36) {
+            userIds.push(t);
+          } else if (typeof t === 'string') {
+            usernames.push(t.replace(/^@/, ''));
+          }
+        });
         return ApiClient.request(`/channels/${channelId}/members/bulk`, {
           method: 'POST',
-          body: { userIds },
+          body: { userIds, usernames },
         });
       },
     },

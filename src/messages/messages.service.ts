@@ -117,7 +117,12 @@ export class MessagesService {
       })
       .execute();
 
-    return savedMessage;
+    const fullMessage = await this.messageRepository.findOne({
+      where: { id: savedMessage.id },
+      relations: { attachments: true, sender: true },
+    });
+
+    return fullMessage || savedMessage;
   }
 
   async findAll(
@@ -153,6 +158,7 @@ export class MessagesService {
     const qb = this.messageRepository
       .createQueryBuilder('message')
       .leftJoinAndSelect('message.attachments', 'attachment')
+      .leftJoinAndSelect('message.sender', 'sender')
       .where('message.channel_id = :channelId', { channelId });
 
     if (query.replyToMessageId) {

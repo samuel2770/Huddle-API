@@ -10,6 +10,8 @@ import {
 import { ChannelsService } from './channels.service.js';
 import { Channel, ChannelType } from './entities/channel.entity.js';
 import { ChannelMember } from './entities/channel-member.entity.js';
+import { User } from '../users/entities/user.entity.js';
+import { WorkspaceMember } from '../workspaces/entities/workspace-member.entity.js';
 
 describe('ChannelsService', () => {
   let service: ChannelsService;
@@ -29,6 +31,17 @@ describe('ChannelsService', () => {
     remove: vi.fn(),
   };
 
+  const mockUserRepo = {
+    findOne: vi.fn(),
+    createQueryBuilder: vi.fn(),
+  };
+
+  const mockWsMemberRepo = {
+    findOne: vi.fn(),
+    create: vi.fn(),
+    save: vi.fn(),
+  };
+
   // Mock DataSource.transaction — executes the callback immediately with a mock manager
   const mockManager = {
     create: vi.fn(),
@@ -38,6 +51,11 @@ describe('ChannelsService', () => {
   const mockDataSource = {
     transaction: vi.fn(async (cb: (manager: any) => Promise<any>) => {
       return cb(mockManager);
+    }),
+    getRepository: vi.fn((entity: any) => {
+      if (entity === User || entity?.name === 'User') return mockUserRepo;
+      if (entity === WorkspaceMember || entity?.name === 'WorkspaceMember') return mockWsMemberRepo;
+      return mockMemberRepo;
     }),
   };
 
@@ -52,6 +70,32 @@ describe('ChannelsService', () => {
     mockManager.save.mockImplementation((_entity: any, data: any) =>
       Promise.resolve(data),
     );
+
+    mockUserRepo.findOne.mockImplementation(async (opts: any) => ({
+      id: opts?.where?.id || 'new-user',
+      full_name: 'Mock User',
+      username: opts?.where?.id || 'mockuser',
+      email: `${opts?.where?.id || 'mock'}@example.com`,
+    }));
+    mockUserRepo.createQueryBuilder.mockImplementation(() => {
+      let queriedVal = 'new-user';
+      return {
+        where: vi.fn().mockImplementation((_clause: string, params: any) => {
+          queriedVal = params?.u || params?.e || 'new-user';
+          return {
+            getOne: vi.fn().mockImplementation(async () => ({
+              id: queriedVal,
+              full_name: `Mock ${queriedVal}`,
+              username: queriedVal,
+              email: `${queriedVal}@example.com`,
+            })),
+          };
+        }),
+      };
+    });
+    mockWsMemberRepo.findOne.mockResolvedValue({ id: 'mock-ws-member' });
+    mockWsMemberRepo.create.mockImplementation((data: any) => data);
+    mockWsMemberRepo.save.mockImplementation((data: any) => Promise.resolve(data));
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

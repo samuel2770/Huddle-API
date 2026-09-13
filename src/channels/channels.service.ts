@@ -9,6 +9,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { Channel, ChannelType } from './entities/channel.entity.js';
 import { ChannelMember } from './entities/channel-member.entity.js';
+import { User } from '../users/entities/user.entity.js';
+import {
+  WorkspaceMember,
+  WorkspaceRole,
+} from '../workspaces/entities/workspace-member.entity.js';
 import { CreateChannelDto } from './dto/create-channel.dto.js';
 import { QueryChannelsDto } from './dto/query-channels.dto.js';
 
@@ -147,9 +152,77 @@ export class ChannelsService {
     return channel;
   }
 
+  async resolveUser(identifier: string): Promise<User> {
+    const userRepo = this.dataSource.getRepository(User);
+    const trimmed = identifier.trim();
+    const clean = trimmed.toLowerCase().replace(/^@/, '');
+
+    // Check UUID format
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        trimmed,
+      );
+
+    if (isUuid) {
+      const byId = await userRepo.findOne({ where: { id: trimmed } });
+      if (byId) return byId;
+    }
+
+    // Lookup by username
+    const byUsername = await userRepo
+      .createQueryBuilder('user')
+      .where('LOWER(user.username) = :u', { u: clean })
+      .getOne();
+    if (byUsername) return byUsername;
+
+    // Lookup by email
+    const byEmail = await userRepo
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :e', { e: clean })
+      .getOne();
+    if (byEmail) return byEmail;
+
+    throw new NotFoundException(`User "${identifier}" not found`);
+  }
+
+  async getMembers(
+    channelId: string,
+    userId: string,
+  ): Promise<
+    {
+      id: string;
+      userId: string;
+      fullName: string;
+      username: string;
+      email: string;
+      avatarUrl: string | null;
+      status: string;
+      joinedAt: Date;
+    }[]
+  > {
+    await this.findOne(channelId, userId);
+
+    const members = await this.memberRepository.find({
+      where: { channel_id: channelId },
+      relations: { user: true },
+      order: { joined_at: 'ASC' },
+    });
+
+    return members.map((m) => ({
+      id: m.id,
+      userId: m.user_id,
+      fullName: m.user?.full_name || '',
+      username: m.user?.username || '',
+      email: m.user?.email || '',
+      avatarUrl: m.user?.avatar_url || null,
+      status: m.user?.status || 'offline',
+      joinedAt: m.joined_at,
+    }));
+  }
+
   async addMember(
     channelId: string,
-    userIdToAdd: string,
+    identifierToAdd: string,
     callerId: string,
   ): Promise<ChannelMember> {
     const channel = await this.channelRepository.findOne({
@@ -177,6 +250,27 @@ export class ChannelsService {
       }
     }
 
+    const targetUser = await this.resolveUser(identifierToAdd);
+    const userIdToAdd = targetUser.id;
+
+    // Automatically ensure target user is a member of the workspace
+    const wsMemberRepo = this.dataSource.getRepository(WorkspaceMember);
+    const existingWsMember = await wsMemberRepo.findOne({
+      where: {
+        workspace_id: channel.workspace_id,
+        user_id: userIdToAdd,
+      },
+    });
+
+    if (!existingWsMember) {
+      const newWsMember = wsMemberRepo.create({
+        workspace_id: channel.workspace_id,
+        user_id: userIdToAdd,
+        role: WorkspaceRole.MEMBER,
+      });
+      await wsMemberRepo.save(newWsMember);
+    }
+
     const existing = await this.memberRepository.findOne({
       where: {
         channel_id: channelId,
@@ -195,20 +289,19 @@ export class ChannelsService {
       joined_at: new Date(),
     });
 
-    return this.memberRepository.save(member);
+    const saved = await this.memberRepository.save(member);
+    saved.user = targetUser;
+    return saved;
   }
 
   /**
    * Bulk add multiple members to a channel. Used by both:
    * - Channel creation flow ("Add team members" step)
    * - In-channel "Add team members" modal
-   * 
-   * Per spec: "add member should be one backend implementation used by
-   * both the channel-creation flow and the in-channel modal"
    */
   async addMembers(
     channelId: string,
-    userIds: string[],
+    identifiers: string[],
     callerId: string,
   ): Promise<{ added: string[]; alreadyMembers: string[] }> {
     const channel = await this.channelRepository.findOne({
@@ -238,7 +331,36 @@ export class ChannelsService {
       }
     }
 
-    const uniqueIds = [...new Set(userIds)];
+    // Resolve all identifiers to users
+    const resolvedUserIds: string[] = [];
+    const wsMemberRepo = this.dataSource.getRepository(WorkspaceMember);
+
+    for (const ident of identifiers) {
+      try {
+        const user = await this.resolveUser(ident);
+        resolvedUserIds.push(user.id);
+
+        // Ensure workspace membership
+        const existingWsMember = await wsMemberRepo.findOne({
+          where: {
+            workspace_id: channel.workspace_id,
+            user_id: user.id,
+          },
+        });
+        if (!existingWsMember) {
+          const newWsMember = wsMemberRepo.create({
+            workspace_id: channel.workspace_id,
+            user_id: user.id,
+            role: WorkspaceRole.MEMBER,
+          });
+          await wsMemberRepo.save(newWsMember);
+        }
+      } catch {
+        // Skip unresolved users or handle gracefully
+      }
+    }
+
+    const uniqueIds = [...new Set(resolvedUserIds)];
 
     // Find which users are already members
     const existingMembers = await this.memberRepository.find({

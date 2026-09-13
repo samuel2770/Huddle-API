@@ -24,6 +24,7 @@ describe('AuthService', () => {
     create: vi.fn(),
     updateStatus: vi.fn(),
     updatePasswordHash: vi.fn(),
+    generateUniqueUsername: vi.fn().mockResolvedValue('test_user'),
   };
 
   const mockJwtService = {

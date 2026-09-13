@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -65,8 +66,18 @@ export class ChannelsController {
     return this.channelsService.findOne(channelId, userId);
   }
 
+  @Get(':channelId/members')
+  @ApiOperation({ summary: 'Get all members of a channel' })
+  @ApiResponse({ status: 200, description: 'List of channel members' })
+  async getMembers(
+    @Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.channelsService.getMembers(channelId, userId);
+  }
+
   @Post(':channelId/members')
-  @ApiOperation({ summary: 'Add a single member to a channel' })
+  @ApiOperation({ summary: 'Add a single member to a channel by userId or unique username' })
   @ApiResponse({ status: 201, description: 'Member added successfully' })
   @ApiResponse({ status: 409, description: 'User is already a member' })
   async addMember(
@@ -74,9 +85,13 @@ export class ChannelsController {
     @Body() addMemberDto: AddChannelMemberDto,
     @CurrentUser('id') callerId: string,
   ) {
+    const target = addMemberDto.username || addMemberDto.userId;
+    if (!target) {
+      throw new BadRequestException('Either username or userId is required');
+    }
     return this.channelsService.addMember(
       channelId,
-      addMemberDto.userId,
+      target,
       callerId,
     );
   }
@@ -90,7 +105,8 @@ export class ChannelsController {
     @Body() dto: AddChannelMembersDto,
     @CurrentUser('id') callerId: string,
   ) {
-    return this.channelsService.addMembers(channelId, dto.userIds, callerId);
+    const targets = [...(dto.userIds || []), ...(dto.usernames || [])];
+    return this.channelsService.addMembers(channelId, targets, callerId);
   }
 
   @Delete(':channelId/members/:userId')

@@ -20,6 +20,10 @@ async function bootstrap() {
   app.useStaticAssets(join(process.cwd(), 'frontend'), {
     extensions: ['html'],
   });
+  app.useStaticAssets(join(process.cwd(), 'frontend'), {
+    prefix: '/frontend/',
+    extensions: ['html'],
+  });
 
   app.enableCors({
     origin: true,

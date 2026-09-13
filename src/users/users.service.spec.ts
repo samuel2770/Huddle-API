@@ -19,6 +19,14 @@ describe('UsersService', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
+    mockUserRepository.createQueryBuilder.mockReturnValue({
+      where: vi.fn().mockReturnThis(),
+      orWhere: vi.fn().mockReturnThis(),
+      take: vi.fn().mockReturnThis(),
+      getOne: vi.fn().mockResolvedValue(null),
+      getMany: vi.fn().mockResolvedValue([]),
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
@@ -99,4 +107,54 @@ describe('UsersService', () => {
       password_hash: 'newhash',
     });
   });
+
+  it('should find user by username using query builder', async () => {
+    const user = { id: 'u-1', username: 'alex' };
+    const qb = {
+      where: vi.fn().mockReturnThis(),
+      getOne: vi.fn().mockResolvedValue(user),
+    };
+    mockUserRepository.createQueryBuilder.mockReturnValue(qb);
+
+    const result = await service.findByUsername('alex');
+    expect(mockUserRepository.createQueryBuilder).toHaveBeenCalledWith('user');
+    expect(qb.where).toHaveBeenCalledWith(
+      'LOWER(user.username) = LOWER(:username)',
+      { username: 'alex' },
+    );
+    expect(result).toEqual(user);
+  });
+
+  it('should generate a unique username from full name', async () => {
+    const qb = {
+      where: vi.fn().mockReturnThis(),
+      getOne: vi.fn().mockResolvedValue(null),
+    };
+    mockUserRepository.createQueryBuilder.mockReturnValue(qb);
+
+    const username = await service.generateUniqueUsername('Jane Doe');
+    expect(username).toBe('jane_doe');
+  });
+
+  it('should update profile and save user', async () => {
+    const existing = {
+      id: 'u-1',
+      full_name: 'Old Name',
+      username: 'oldname',
+      avatar_url: null,
+    };
+    mockUserRepository.findOne.mockResolvedValue(existing);
+    mockUserRepository.save.mockImplementation((u: any) => Promise.resolve(u));
+
+    const updated = await service.updateProfile('u-1', {
+      fullName: 'New Name',
+      username: 'newname',
+      avatarUrl: 'https://example.com/avatar.png',
+    });
+
+    expect(updated.full_name).toBe('New Name');
+    expect(updated.username).toBe('newname');
+    expect(updated.avatar_url).toBe('https://example.com/avatar.png');
+  });
 });
+

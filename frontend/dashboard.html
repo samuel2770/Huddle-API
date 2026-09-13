@@ -212,18 +212,25 @@
           <!-- Horizontal Divider -->
           <hr class="sidebar-divider" aria-hidden="true">
 
-          <!-- User Profile Row -->
-          <div class="sidebar-user-row">
-            <div class="user-avatar-circle" aria-hidden="true">
+          <!-- User Profile Row (Click to view & edit profile) -->
+          <button type="button" class="sidebar-user-row" id="sidebar-user-profile-btn" aria-label="View and edit profile" title="Click to view & edit your profile">
+            <div class="user-avatar-circle" id="sidebar-user-avatar-circle" aria-hidden="true">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
               </svg>
             </div>
             <div class="user-info-text">
-              <span class="user-name">Grace Abdul</span>
-              <span class="user-email" title="grace@teamname.com">grace@teamname...</span>
+              <span class="user-name" id="sidebar-user-name">Grace Abdul</span>
+              <span class="user-handle" id="sidebar-user-handle">@grace_abdul</span>
+              <span class="user-email" id="sidebar-user-email" title="grace@teamname.com">grace@teamname...</span>
             </div>
-          </div>
+            <div class="user-edit-badge" title="Edit profile" aria-hidden="true">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </div>
+          </button>
 
         </div>
 
@@ -464,6 +471,232 @@
             </div>
           </form>
 
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         3. User Profile Modal (Edit Avatar, Full Name, Unique Username, View Email)
+         ==================================================================== -->
+    <div id="user-profile-modal" class="join-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" aria-hidden="true">
+      <div class="join-modal-backdrop" id="profile-modal-backdrop"></div>
+      
+      <div class="join-modal-shell">
+        <div class="join-modal-card profile-modal-card">
+          <!-- Close Button -->
+          <button type="button" class="modal-close-icon-btn" id="profile-modal-close-btn" aria-label="Close profile modal">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
+          <!-- Modal Header -->
+          <div class="profile-header-area">
+            <h2 class="join-modal-heading" id="profile-modal-title">Edit Profile</h2>
+            <p class="join-modal-subheading">Update your profile photo, display name, and unique handle</p>
+          </div>
+
+          <!-- Avatar Section -->
+          <div class="profile-avatar-section">
+            <div class="profile-avatar-preview-box" id="profile-avatar-preview">
+              <span id="profile-avatar-initials">GA</span>
+              <img id="profile-avatar-img" src="" alt="Avatar preview" style="display:none;" />
+            </div>
+            <div class="profile-avatar-actions">
+              <label for="profile-avatar-input" class="profile-input-label">Avatar Image URL</label>
+              <div class="modal-input-wrapper">
+                <div class="modal-input-icon-slot" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                </div>
+                <input
+                  type="url"
+                  id="profile-avatar-input"
+                  class="modal-text-input"
+                  placeholder="https://example.com/avatar.jpg"
+                  autocomplete="off"
+                >
+              </div>
+              <div class="avatar-presets-row">
+                <span class="presets-label">Presets:</span>
+                <button type="button" class="avatar-preset-btn" data-url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" title="Preset 1">✨ 1</button>
+                <button type="button" class="avatar-preset-btn" data-url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" title="Preset 2">💼 2</button>
+                <button type="button" class="avatar-preset-btn" data-url="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150" title="Preset 3">🌸 3</button>
+                <button type="button" class="avatar-preset-btn" data-url="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150" title="Preset 4">⚡ 4</button>
+                <button type="button" class="avatar-preset-btn" data-url="" title="Reset to initials">Clear</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Profile Form -->
+          <form id="profile-edit-form" class="join-modal-form" novalidate onsubmit="return false;">
+            <!-- Full Name -->
+            <div class="modal-field-group">
+              <label for="profile-fullname-input" class="modal-field-label">
+                Full Name<span class="required-asterisk" aria-hidden="true">*</span>
+              </label>
+              <div class="modal-input-wrapper" id="profile-fullname-wrapper">
+                <div class="modal-input-icon-slot" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  id="profile-fullname-input"
+                  class="modal-text-input"
+                  placeholder="e.g Grace Abdul"
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Unique Username -->
+            <div class="modal-field-group">
+              <label for="profile-username-input" class="modal-field-label">
+                Unique Username (Handle)<span class="required-asterisk" aria-hidden="true">*</span>
+              </label>
+              <div class="modal-input-wrapper" id="profile-username-wrapper">
+                <div class="modal-input-icon-slot" aria-hidden="true">
+                  <span style="font-weight:700;font-size:16px;color:#FF6A00;">@</span>
+                </div>
+                <input
+                  type="text"
+                  id="profile-username-input"
+                  class="modal-text-input"
+                  placeholder="grace_abdul"
+                  pattern="[a-zA-Z0-9_.]+"
+                  minlength="3"
+                  maxlength="30"
+                  required
+                  spellcheck="false"
+                  autocomplete="off"
+                >
+              </div>
+              <div class="modal-helper-row">
+                <svg class="modal-helper-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span class="modal-helper-text">This unique name is what teammates use to add you to channels and groups.</span>
+              </div>
+            </div>
+
+            <!-- Email (Read-only) -->
+            <div class="modal-field-group">
+              <label for="profile-email-input" class="modal-field-label">
+                Email Address
+              </label>
+              <div class="modal-input-wrapper disabled-input-wrapper">
+                <div class="modal-input-icon-slot" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                </div>
+                <input
+                  type="email"
+                  id="profile-email-input"
+                  class="modal-text-input"
+                  disabled
+                >
+                <span class="verified-pill">Verified</span>
+              </div>
+            </div>
+
+            <!-- Action Buttons Row -->
+            <div class="modal-actions-row" style="margin-top:10px;">
+              <button type="button" class="modal-action-btn modal-cancel-btn" id="profile-modal-cancel-btn">
+                Cancel
+              </button>
+              <button type="submit" class="modal-action-btn modal-join-btn active" id="profile-modal-submit-btn">
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         4. Add Channel Member Modal (Search by @username or email)
+         ==================================================================== -->
+    <div id="channel-add-member-modal" class="join-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="add-member-modal-title" aria-hidden="true">
+      <div class="join-modal-backdrop" id="channel-add-member-backdrop"></div>
+      
+      <div class="join-modal-shell">
+        <div class="join-modal-card">
+          <!-- Close Button -->
+          <button type="button" class="modal-close-icon-btn" id="channel-add-member-close-btn" aria-label="Close modal">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
+          <!-- Icon -->
+          <div class="join-modal-icon-box" style="background:#FF6A00;" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7.5" r="4"></circle>
+              <line x1="20" y1="8" x2="20" y2="14"></line>
+              <line x1="23" y1="11" x2="17" y2="11"></line>
+            </svg>
+          </div>
+
+          <h2 class="join-modal-heading" id="add-member-modal-title">Add Member to Channel</h2>
+          <p class="join-modal-subheading" id="add-member-modal-subheading">Enter their unique username or email to add them</p>
+
+          <form id="channel-add-member-form" class="join-modal-form" novalidate onsubmit="return false;">
+            <div class="modal-field-group">
+              <label for="channel-member-search-input" class="modal-field-label">
+                Unique Username or Email<span class="required-asterisk" aria-hidden="true">*</span>
+              </label>
+              
+              <div class="modal-input-wrapper" id="add-member-input-wrapper">
+                <div class="modal-input-icon-slot" aria-hidden="true">
+                  <span style="font-weight:700;font-size:16px;color:#FF6A00;">@</span>
+                </div>
+                <input
+                  type="text"
+                  id="channel-member-search-input"
+                  class="modal-text-input"
+                  placeholder="e.g. grace_abdul or stephenaro3"
+                  autocomplete="off"
+                  spellcheck="false"
+                  required
+                >
+              </div>
+
+              <!-- Live Suggestion Box -->
+              <div id="add-member-live-results" class="add-member-live-results" style="display:none;"></div>
+
+              <div class="modal-helper-row">
+                <svg class="modal-helper-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span class="modal-helper-text">You can type @username to quickly add any member.</span>
+              </div>
+            </div>
+
+            <!-- Action Buttons Row -->
+            <div class="modal-actions-row">
+              <button type="button" class="modal-action-btn modal-cancel-btn" id="channel-add-member-cancel-btn">
+                Cancel
+              </button>
+              <button type="submit" class="modal-action-btn modal-join-btn" id="channel-add-member-submit-btn" disabled>
+                Add to Channel
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

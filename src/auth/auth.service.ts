@@ -46,9 +46,14 @@ export class AuthService {
 
     const password_hash = await argon2.hash(dto.password);
 
+    const username = await this.usersService.generateUniqueUsername(
+      dto.fullName || dto.email.split('@')[0],
+    );
+
     const user = await this.usersService.create({
       full_name: dto.fullName,
       email: dto.email.toLowerCase().trim(),
+      username,
       password_hash,
       status: UserStatus.OFFLINE,
       is_email_verified: false,
@@ -57,6 +62,7 @@ export class AuthService {
     return {
       id: user.id,
       fullName: user.full_name,
+      username: user.username,
       email: user.email,
       avatarUrl: user.avatar_url,
       status: user.status,
@@ -121,6 +127,7 @@ export class AuthService {
       user: {
         id: user.id,
         fullName: user.full_name,
+        username: user.username,
         email: user.email,
         avatarUrl: user.avatar_url,
         status: UserStatus.ONLINE,

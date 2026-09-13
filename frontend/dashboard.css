@@ -598,18 +598,29 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 6px;
-  border-radius: 8px;
-  transition: background-color var(--transition-fast);
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  position: relative;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
 }
 
 .sidebar-user-row:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-user-row:active {
+  transform: scale(0.985);
 }
 
 .user-avatar-circle {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background-color: var(--color-avatar-bg);
   display: flex;
@@ -617,6 +628,13 @@ html, body {
   justify-content: center;
   color: var(--color-avatar-icon);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.user-avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .user-info-text {
@@ -624,23 +642,49 @@ html, body {
   flex-direction: column;
   overflow: hidden;
   text-align: left;
+  flex: 1;
 }
 
 .user-name {
   font-size: 13.5px;
   font-weight: 600;
   color: #ffffff;
-  line-height: 1.25;
+  line-height: 1.2;
+}
+
+.user-handle {
+  font-size: 11px;
+  color: #FF6A00;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.1px;
 }
 
 .user-email {
-  font-size: 11.5px;
+  font-size: 11px;
   color: #94a3b8;
-  line-height: 1.25;
+  line-height: 1.2;
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
-  max-width: 135px;
+  max-width: 125px;
+}
+
+.user-edit-badge {
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.sidebar-user-row:hover .user-edit-badge {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* ==========================================================================
@@ -1461,3 +1505,244 @@ html, body {
     flex-shrink: 0;
   }
 }
+
+/* ==========================================================================
+   User Profile Modal & Channel Member Modal Styles
+   ========================================================================== */
+
+.profile-modal-card {
+  max-width: 480px;
+  width: 100%;
+  position: relative;
+}
+
+.modal-close-icon-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: none;
+  border: none;
+  color: #98a2b3;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  z-index: 5;
+}
+
+.modal-close-icon-btn:hover {
+  background: #f2f4f7;
+  color: #101828;
+}
+
+.profile-header-area {
+  margin-bottom: 6px;
+}
+
+.profile-avatar-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 16px 0 20px 0;
+  padding: 14px;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #eaecf0;
+}
+
+.profile-avatar-preview-box {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #ff6a00;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 700;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 2px solid #eaecf0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.profile-avatar-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-actions {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-input-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #344054;
+}
+
+.avatar-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.presets-label {
+  font-size: 11px;
+  color: #667085;
+  font-weight: 500;
+}
+
+.avatar-preset-btn {
+  border: 1px solid #d0d5dd;
+  background: #ffffff;
+  border-radius: 12px;
+  font-size: 11.5px;
+  padding: 2px 8px;
+  cursor: pointer;
+  color: #344054;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.avatar-preset-btn:hover {
+  border-color: #ff6a00;
+  color: #ff6a00;
+  background: #fff4ed;
+}
+
+.verified-pill {
+  padding: 2px 8px;
+  background: #ecfdf3;
+  color: #027a48;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.disabled-input-wrapper {
+  background: #f2f4f7 !important;
+  cursor: not-allowed;
+  border-color: #eaecf0 !important;
+}
+
+.disabled-input-wrapper input {
+  cursor: not-allowed;
+  color: #667085 !important;
+}
+
+/* Live search results for Channel Add Member */
+.add-member-live-results {
+  margin-top: 8px;
+  border: 1px solid #eaecf0;
+  border-radius: 10px;
+  max-height: 190px;
+  overflow-y: auto;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.live-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f2f4f7;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.live-result-item:last-child {
+  border-bottom: none;
+}
+
+.live-result-item:hover {
+  background: #fff4ed;
+}
+
+.live-result-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-result-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ff6a00;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.live-result-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.live-result-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.live-result-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #101828;
+  line-height: 1.2;
+}
+
+.live-result-handle {
+  font-size: 11.5px;
+  color: #ff6a00;
+  font-weight: 500;
+}
+
+.live-result-add-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ff6a00;
+  background: #fff4ed;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.channel-member-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #f2f4f7;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #344054;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.channel-member-pill:hover {
+  background: #e4e7ec;
+  border-color: #d0d5dd;
+}
+

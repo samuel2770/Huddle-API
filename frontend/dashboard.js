@@ -54,6 +54,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sidebarChannelsList = document.getElementById('sidebar-channels-list');
   const sidebarAddDmBtn = document.getElementById('sidebar-add-dm-btn');
 
+  // User Profile Modal Elements
+  const userProfileBtn = document.getElementById('sidebar-user-profile-btn');
+  const userProfileModal = document.getElementById('user-profile-modal');
+  const profileModalBackdrop = document.getElementById('profile-modal-backdrop');
+  const profileModalCloseBtn = document.getElementById('profile-modal-close-btn');
+  const profileModalCancelBtn = document.getElementById('profile-modal-cancel-btn');
+  const profileModalSubmitBtn = document.getElementById('profile-modal-submit-btn');
+  const profileFullNameInput = document.getElementById('profile-fullname-input');
+  const profileUsernameInput = document.getElementById('profile-username-input');
+  const profileEmailInput = document.getElementById('profile-email-input');
+  const profileAvatarInput = document.getElementById('profile-avatar-input');
+  const profileAvatarImg = document.getElementById('profile-avatar-img');
+  const profileAvatarInitials = document.getElementById('profile-avatar-initials');
+  const profileEditForm = document.getElementById('profile-edit-form');
+
+  // Channel Add Member Modal Elements
+  const channelAddMemberModal = document.getElementById('channel-add-member-modal');
+  const channelAddMemberBackdrop = document.getElementById('channel-add-member-backdrop');
+  const channelAddMemberCloseBtn = document.getElementById('channel-add-member-close-btn');
+  const channelAddMemberCancelBtn = document.getElementById('channel-add-member-cancel-btn');
+  const channelAddMemberSubmitBtn = document.getElementById('channel-add-member-submit-btn');
+  const channelMemberSearchInput = document.getElementById('channel-member-search-input');
+  const channelAddMemberForm = document.getElementById('channel-add-member-form');
+  const addMemberLiveResults = document.getElementById('add-member-live-results');
+  const addMemberModalSubheading = document.getElementById('add-member-modal-subheading');
+
   // --- Workspace Popover Logic ---
 
   function togglePopover(forceState) {
@@ -365,6 +391,324 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ========================================================================
+  // User Profile Modal Logic (Avatar, Full Name, Unique Username, Email)
+  // ========================================================================
+
+  let isProfileModalClosing = false;
+
+  function updateProfileAvatarPreview(url, name) {
+    if (!profileAvatarImg || !profileAvatarInitials) return;
+    if (url && url.trim()) {
+      profileAvatarImg.src = url.trim();
+      profileAvatarImg.style.display = 'block';
+      profileAvatarInitials.style.display = 'none';
+      profileAvatarImg.onerror = () => {
+        profileAvatarImg.style.display = 'none';
+        profileAvatarInitials.style.display = 'block';
+        profileAvatarInitials.textContent = (name || 'U').charAt(0).toUpperCase();
+      };
+    } else {
+      profileAvatarImg.style.display = 'none';
+      profileAvatarInitials.style.display = 'block';
+      profileAvatarInitials.textContent = (name || 'U').charAt(0).toUpperCase();
+    }
+  }
+
+  function openProfileModal() {
+    togglePopover(false);
+    closeMobileDrawer();
+
+    const currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
+    if (!currentUser) return;
+
+    if (profileFullNameInput) profileFullNameInput.value = currentUser.fullName || '';
+    if (profileUsernameInput) profileUsernameInput.value = currentUser.username || '';
+    if (profileEmailInput) profileEmailInput.value = currentUser.email || '';
+    if (profileAvatarInput) profileAvatarInput.value = currentUser.avatarUrl || '';
+
+    updateProfileAvatarPreview(currentUser.avatarUrl, currentUser.fullName);
+
+    isProfileModalClosing = false;
+    userProfileModal.classList.remove('closing');
+    userProfileModal.classList.add('open');
+    userProfileModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => {
+      profileUsernameInput?.focus();
+    }, 60);
+  }
+
+  function closeProfileModal() {
+    if (isProfileModalClosing || !userProfileModal || !userProfileModal.classList.contains('open')) return;
+
+    isProfileModalClosing = true;
+    userProfileModal.classList.add('closing');
+
+    setTimeout(() => {
+      userProfileModal.classList.remove('open', 'closing');
+      userProfileModal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      isProfileModalClosing = false;
+    }, 180);
+  }
+
+  if (userProfileBtn) {
+    userProfileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openProfileModal();
+    });
+  }
+
+  if (profileModalCloseBtn) {
+    profileModalCloseBtn.addEventListener('click', closeProfileModal);
+  }
+
+  if (profileModalCancelBtn) {
+    profileModalCancelBtn.addEventListener('click', closeProfileModal);
+  }
+
+  if (profileModalBackdrop) {
+    profileModalBackdrop.addEventListener('click', closeProfileModal);
+  }
+
+  if (profileAvatarInput) {
+    profileAvatarInput.addEventListener('input', () => {
+      const name = profileFullNameInput ? profileFullNameInput.value : '';
+      updateProfileAvatarPreview(profileAvatarInput.value, name);
+    });
+  }
+
+  document.querySelectorAll('.avatar-preset-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const presetUrl = btn.getAttribute('data-url') || '';
+      if (profileAvatarInput) {
+        profileAvatarInput.value = presetUrl;
+      }
+      const name = profileFullNameInput ? profileFullNameInput.value : '';
+      updateProfileAvatarPreview(presetUrl, name);
+    });
+  });
+
+  if (profileEditForm) {
+    profileEditForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!profileModalSubmitBtn) return;
+
+      const newFullName = (profileFullNameInput?.value || '').trim();
+      const newUsername = (profileUsernameInput?.value || '').trim().replace(/^@/, '');
+      const newAvatarUrl = (profileAvatarInput?.value || '').trim();
+
+      if (!newFullName) {
+        window.showHuddleToast('Full name is required', 'error');
+        return;
+      }
+
+      if (!newUsername || newUsername.length < 3) {
+        window.showHuddleToast('Username must be at least 3 characters', 'error');
+        return;
+      }
+
+      if (!/^[a-zA-Z0-9_.]+$/.test(newUsername)) {
+        window.showHuddleToast('Username can only contain letters, numbers, underscores, and dots', 'error');
+        return;
+      }
+
+      profileModalSubmitBtn.disabled = true;
+      profileModalSubmitBtn.textContent = 'Saving...';
+
+      try {
+        const updatedUser = await window.HuddleApi.users.updateProfile({
+          fullName: newFullName,
+          username: newUsername,
+          avatarUrl: newAvatarUrl || null,
+        });
+
+        window.HuddleApi.setUser(updatedUser);
+        updateUserUI(updatedUser);
+        closeProfileModal();
+        window.showHuddleToast('Profile updated successfully!', 'success');
+      } catch (err) {
+        console.error('[Huddle Profile Update Error]:', err);
+        window.showHuddleToast(err.message || 'Failed to update profile', 'error');
+      } finally {
+        profileModalSubmitBtn.disabled = false;
+        profileModalSubmitBtn.textContent = 'Save Changes';
+      }
+    });
+  }
+
+  // ========================================================================
+  // Channel Add Member Modal Logic (Add by Unique Username or Email)
+  // ========================================================================
+
+  let isAddMemberModalClosing = false;
+  let currentActiveChannelForAdd = null;
+  let searchDebounceTimer = null;
+
+  function openAddMemberModal(channel) {
+    currentActiveChannelForAdd = channel;
+    const titleEl = document.getElementById('add-member-modal-title');
+    if (titleEl && channel) {
+      titleEl.textContent = `Add Member to #${channel.name}`;
+    }
+
+    if (addMemberModalSubheading && channel) {
+      addMemberModalSubheading.textContent = `Enter their unique username or email to add them to #${channel.name}`;
+    }
+
+    if (channelMemberSearchInput) channelMemberSearchInput.value = '';
+    if (addMemberLiveResults) {
+      addMemberLiveResults.innerHTML = '';
+      addMemberLiveResults.style.display = 'none';
+    }
+
+    validateAddMemberInput();
+
+    isAddMemberModalClosing = false;
+    channelAddMemberModal.classList.remove('closing');
+    channelAddMemberModal.classList.add('open');
+    channelAddMemberModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => {
+      channelMemberSearchInput?.focus();
+    }, 60);
+  }
+
+  function closeAddMemberModal() {
+    if (isAddMemberModalClosing || !channelAddMemberModal || !channelAddMemberModal.classList.contains('open')) return;
+
+    isAddMemberModalClosing = true;
+    channelAddMemberModal.classList.add('closing');
+
+    setTimeout(() => {
+      channelAddMemberModal.classList.remove('open', 'closing');
+      channelAddMemberModal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      isAddMemberModalClosing = false;
+    }, 180);
+  }
+
+  function validateAddMemberInput() {
+    if (!channelMemberSearchInput || !channelAddMemberSubmitBtn) return;
+    const val = channelMemberSearchInput.value.trim();
+    if (val.length >= 2) {
+      channelAddMemberSubmitBtn.disabled = false;
+      channelAddMemberSubmitBtn.classList.add('active');
+    } else {
+      channelAddMemberSubmitBtn.disabled = true;
+      channelAddMemberSubmitBtn.classList.remove('active');
+    }
+  }
+
+  if (channelAddMemberCloseBtn) channelAddMemberCloseBtn.addEventListener('click', closeAddMemberModal);
+  if (channelAddMemberCancelBtn) channelAddMemberCancelBtn.addEventListener('click', closeAddMemberModal);
+  if (channelAddMemberBackdrop) channelAddMemberBackdrop.addEventListener('click', closeAddMemberModal);
+
+  if (channelMemberSearchInput) {
+    channelMemberSearchInput.addEventListener('input', () => {
+      validateAddMemberInput();
+      const query = channelMemberSearchInput.value.trim().replace(/^@/, '');
+
+      clearTimeout(searchDebounceTimer);
+      if (!query || query.length < 2) {
+        if (addMemberLiveResults) {
+          addMemberLiveResults.innerHTML = '';
+          addMemberLiveResults.style.display = 'none';
+        }
+        return;
+      }
+
+      searchDebounceTimer = setTimeout(async () => {
+        try {
+          const results = await window.HuddleApi.users.search(query);
+          renderLiveSearchResults(results);
+        } catch (err) {
+          console.warn('[Huddle User Search Error]:', err);
+        }
+      }, 250);
+    });
+  }
+
+  function renderLiveSearchResults(users) {
+    if (!addMemberLiveResults) return;
+    if (!users || users.length === 0) {
+      addMemberLiveResults.innerHTML = `
+        <div style="padding:10px 14px;color:#98A2B3;font-size:12.5px;text-align:center;">
+          No matching users found
+        </div>
+      `;
+      addMemberLiveResults.style.display = 'block';
+      return;
+    }
+
+    addMemberLiveResults.innerHTML = users.map((u) => {
+      const initial = (u.fullName || 'U').charAt(0).toUpperCase();
+      const avatarHtml = u.avatarUrl
+        ? `<div class="live-result-avatar"><img src="${escapeHtml(u.avatarUrl)}" alt="" /></div>`
+        : `<div class="live-result-avatar">${escapeHtml(initial)}</div>`;
+
+      return `
+        <div class="live-result-item" data-username="${escapeHtml(u.username || '')}" data-user-id="${escapeHtml(u.id)}">
+          <div class="live-result-user">
+            ${avatarHtml}
+            <div class="live-result-info">
+              <span class="live-result-name">${escapeHtml(u.fullName || '')}</span>
+              <span class="live-result-handle">@${escapeHtml(u.username || '')}</span>
+            </div>
+          </div>
+          <span class="live-result-add-badge">+ Select</span>
+        </div>
+      `;
+    }).join('');
+
+    addMemberLiveResults.style.display = 'block';
+
+    addMemberLiveResults.querySelectorAll('.live-result-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        const username = item.getAttribute('data-username');
+        if (username && channelMemberSearchInput) {
+          channelMemberSearchInput.value = `@${username}`;
+          addMemberLiveResults.style.display = 'none';
+          validateAddMemberInput();
+          channelAddMemberSubmitBtn?.focus();
+        }
+      });
+    });
+  }
+
+  if (channelAddMemberForm) {
+    channelAddMemberForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentActiveChannelForAdd || !channelAddMemberSubmitBtn || channelAddMemberSubmitBtn.disabled) return;
+
+      const rawInput = channelMemberSearchInput.value.trim();
+      if (!rawInput) return;
+
+      const target = rawInput.replace(/^@/, '');
+      channelAddMemberSubmitBtn.disabled = true;
+      channelAddMemberSubmitBtn.textContent = 'Adding...';
+
+      try {
+        await window.HuddleApi.channels.addMember(currentActiveChannelForAdd.id, target);
+        closeAddMemberModal();
+        window.showHuddleToast(`Added @${target} to #${currentActiveChannelForAdd.name}!`, 'success');
+        // Refresh channel view so member list & messages update
+        renderChannelMainView(currentActiveChannelForAdd);
+      } catch (err) {
+        console.error('[Huddle Add Channel Member Error]:', err);
+        window.showHuddleToast(err.message || 'Failed to add member to channel', 'error');
+      } finally {
+        channelAddMemberSubmitBtn.disabled = false;
+        channelAddMemberSubmitBtn.textContent = 'Add to Channel';
+        validateAddMemberInput();
+      }
+    });
+  }
+
+  // ========================================================================
   // Global Keyboard Shortcuts (Escape Key)
   // ========================================================================
 
@@ -374,6 +718,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         closeJoinModal();
       } else if (createModalOverlay && createModalOverlay.classList.contains('open')) {
         closeCreateModal();
+      } else if (userProfileModal && userProfileModal.classList.contains('open')) {
+        closeProfileModal();
+      } else if (channelAddMemberModal && channelAddMemberModal.classList.contains('open')) {
+        closeAddMemberModal();
       } else {
         togglePopover(false);
         closeMobileDrawer();
@@ -474,13 +822,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Workspace & Channels Initialization & Rendering
   // ========================================================================
 
+  function updateUserUI(user) {
+    if (!user) return;
+    const userNameEl = document.getElementById('sidebar-user-name') || document.querySelector('.user-name');
+    const userHandleEl = document.getElementById('sidebar-user-handle') || document.querySelector('.user-handle');
+    const userEmailEl = document.getElementById('sidebar-user-email') || document.querySelector('.user-email');
+    const userAvatarEl = document.getElementById('sidebar-user-avatar-circle') || document.querySelector('.user-avatar-circle');
+    const mobileAvatarEl = document.querySelector('.mobile-avatar');
+
+    if (userNameEl) userNameEl.textContent = user.fullName || 'Huddle Member';
+    if (userHandleEl) userHandleEl.textContent = `@${user.username || 'user'}`;
+    if (userEmailEl) {
+      userEmailEl.textContent = user.email || '';
+      userEmailEl.title = user.email || '';
+    }
+    if (mobileAvatarEl) {
+      mobileAvatarEl.title = `${user.fullName || 'User'} (@${user.username || ''})`;
+    }
+
+    if (userAvatarEl) {
+      if (user.avatarUrl && user.avatarUrl.trim()) {
+        userAvatarEl.innerHTML = `<img src="${escapeHtml(user.avatarUrl.trim())}" alt="" style="width:100%;height:100%;object-fit:cover;" />`;
+      } else {
+        const initial = (user.fullName || 'U').charAt(0).toUpperCase();
+        userAvatarEl.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          </svg>
+        `;
+      }
+    }
+  }
+
   async function initializeWorkspace() {
     let currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
 
     // Refresh user profile from backend
     try {
       if (window.HuddleApi) {
-        const freshUser = await window.HuddleApi.auth.getMe();
+        const freshUser = await window.HuddleApi.users.getMe();
         if (freshUser) {
           currentUser = freshUser;
           window.HuddleApi.setUser(freshUser);
@@ -490,18 +870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Update user info across UI
     if (currentUser) {
-      const userNameEl = document.querySelector('.user-name');
-      const userEmailEl = document.querySelector('.user-email');
-      const mobileAvatarEl = document.querySelector('.mobile-avatar');
-
-      if (userNameEl) userNameEl.textContent = currentUser.fullName || 'Huddle Member';
-      if (userEmailEl) {
-        userEmailEl.textContent = currentUser.email || '';
-        userEmailEl.title = currentUser.email || '';
-      }
-      if (mobileAvatarEl) {
-        mobileAvatarEl.title = currentUser.fullName || 'User Profile';
-      }
+      updateUserUI(currentUser);
     }
 
     // Load workspaces
@@ -715,6 +1084,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             </span>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
+            <button type="button" id="channel-members-count-btn" class="channel-member-pill" title="View channel members">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <span id="channel-members-count-text">Members</span>
+            </button>
             <button type="button" id="channel-invite-btn" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#FF6A00;color:#ffffff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s ease;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -722,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <line x1="20" y1="8" x2="20" y2="14"></line>
                 <line x1="23" y1="11" x2="17" y2="11"></line>
               </svg>
-              + Invite Member
+              + Add Member
             </button>
           </div>
         </header>
@@ -775,12 +1153,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chatForm = document.getElementById('chat-send-form');
     const chatInput = document.getElementById('chat-message-input');
     const inviteBtn = document.getElementById('channel-invite-btn');
+    const membersCountBtn = document.getElementById('channel-members-count-btn');
 
     if (inviteBtn) {
       inviteBtn.addEventListener('click', () => {
-        openInviteModal();
+        openAddMemberModal(channel);
       });
     }
+
+    async function loadChannelMembers() {
+      try {
+        const members = await window.HuddleApi.channels.getMembers(channel.id);
+        const countText = document.getElementById('channel-members-count-text');
+        if (countText && members) {
+          countText.textContent = `${members.length} ${members.length === 1 ? 'member' : 'members'}`;
+        }
+        return members;
+      } catch (err) {
+        console.warn('Could not load channel members count:', err);
+        return [];
+      }
+    }
+
+    if (membersCountBtn) {
+      membersCountBtn.addEventListener('click', async () => {
+        const members = await loadChannelMembers();
+        if (!members || members.length === 0) return;
+        const membersListStr = members.map((m) => `• ${m.fullName || 'Member'} (@${m.username || 'user'})`).join('\n');
+        showActionDialog(`Channel Members (${members.length})`, membersListStr);
+      });
+    }
+
+    loadChannelMembers();
 
     let isFetching = false;
     async function loadMessages() {
@@ -811,20 +1215,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       const sorted = [...messages].sort((a, b) => new Date(a.created_at || a.createdAt || 0) - new Date(b.created_at || b.createdAt || 0));
 
       messagesList.innerHTML = sorted.map((msg) => {
-        const isMe = currentUser && (msg.sender_id === currentUser.id || msg.senderId === currentUser.id);
-        const senderName = msg.sender?.fullName || (isMe ? 'You' : 'Teammate');
+        const isMe = currentUser && (msg.sender_id === currentUser.id || msg.senderId === currentUser.id || msg.sender?.id === currentUser.id);
+        const senderName = msg.sender?.full_name || msg.sender?.fullName || (isMe ? (currentUser.fullName || 'You') : 'Teammate');
+        const senderUsername = msg.sender?.username || (isMe ? (currentUser.username || 'you') : '');
         const initial = senderName.charAt(0).toUpperCase();
+        const avatarUrl = msg.sender?.avatar_url || msg.sender?.avatarUrl || (isMe ? currentUser.avatarUrl : null);
         const timeStr = msg.created_at ? formatMessageTime(msg.created_at) : '';
 
+        const avatarInnerHtml = avatarUrl
+          ? `<img src="${escapeHtml(avatarUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;" />`
+          : escapeHtml(initial);
+
         return `
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:6px 8px;border-radius:10px;">
-            <div style="width:36px;height:36px;border-radius:50%;background:${isMe ? '#FF6A00' : '#475467'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">
-              ${escapeHtml(initial)}
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:8px 10px;border-radius:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:${isMe ? '#FF6A00' : '#475467'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;overflow:hidden;">
+              ${avatarInnerHtml}
             </div>
             <div style="flex:1;">
-              <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
                 <span style="font-weight:700;font-size:14px;color:#101828;">${escapeHtml(senderName)}</span>
-                <span style="font-size:12px;color:#98A2B3;">${escapeHtml(timeStr)}</span>
+                ${senderUsername ? `<span style="font-size:12px;font-weight:600;color:#FF6A00;">@${escapeHtml(senderUsername)}</span>` : ''}
+                <span style="font-size:11.5px;color:#98A2B3;margin-left:4px;">${escapeHtml(timeStr)}</span>
               </div>
               <div style="font-size:14px;color:#344054;line-height:1.5;word-break:break-word;">
                 ${escapeHtml(msg.content || '')}

@@ -90,6 +90,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   }
 
+  // Username validator
+  function isValidUsername(username) {
+    const clean = username.trim().replace(/^@/, '');
+    return /^[a-zA-Z0-9_.]+$/.test(clean) && clean.length >= 3 && clean.length <= 30;
+  }
+
   // --------------------------------------------------------------------------
   // LocalStorage Persistence Helpers
   // --------------------------------------------------------------------------
@@ -316,13 +322,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tokens = rawText.split(/[,\s]+/).map((t) => t.trim()).filter(Boolean);
 
     let addedAny = false;
-    tokens.forEach((email) => {
-      if (isValidEmail(email)) {
+    tokens.forEach((token) => {
+      if (isValidEmail(token) || isValidUsername(token)) {
+        const displayVal = token.startsWith('@') || !isValidEmail(token)
+          ? `@${token.replace(/^@/, '')}`
+          : token;
         // Prevent duplicate entries
-        const lower = email.toLowerCase();
-        const exists = channelState.members.some((m) => m.toLowerCase() === lower);
+        const exists = channelState.members.some(
+          (m) => m.toLowerCase() === displayVal.toLowerCase(),
+        );
         if (!exists) {
-          channelState.members.push(email);
+          channelState.members.push(displayVal);
           addedAny = true;
         }
       }
@@ -437,13 +447,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         channelState.type || 'public'
       );
 
-      // If team members' emails were entered, send workspace invites
+      // If team members (emails or unique usernames) were entered:
       if (channelState.members && channelState.members.length > 0) {
-        for (const email of channelState.members) {
+        for (const member of channelState.members) {
           try {
-            await window.HuddleApi.invites.send(workspaceId, email);
+            if (isValidEmail(member)) {
+              await window.HuddleApi.invites.send(workspaceId, member);
+            }
+            // Add directly to channel by username or email
+            await window.HuddleApi.channels.addMember(channel.id, member);
           } catch (invErr) {
-            console.warn(`[Huddle] Invite warning for ${email}:`, invErr.message);
+            console.warn(`[Huddle] Member add warning for ${member}:`, invErr.message);
           }
         }
       }
