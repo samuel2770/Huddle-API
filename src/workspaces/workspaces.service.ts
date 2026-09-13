@@ -11,6 +11,8 @@ import {
   WorkspaceMember,
   WorkspaceRole,
 } from './entities/workspace-member.entity.js';
+import { Channel, ChannelType } from '../channels/entities/channel.entity.js';
+import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto.js';
 
 @Injectable()
@@ -218,6 +220,31 @@ export class WorkspacesService {
         role: WorkspaceRole.MEMBER,
       });
       await this.memberRepository.save(member);
+    }
+
+    // Auto-enroll in public channels so user can chat immediately
+    try {
+      const channelRepo = this.dataSource.getRepository(Channel);
+      const chanMemberRepo = this.dataSource.getRepository(ChannelMember);
+      const publicChannels = await channelRepo.find({
+        where: { workspace_id: workspace.id, type: ChannelType.PUBLIC },
+      });
+      for (const chan of publicChannels) {
+        const isMember = await chanMemberRepo.findOne({
+          where: { channel_id: chan.id, user_id: userId },
+        });
+        if (!isMember) {
+          const newChanMember = chanMemberRepo.create({
+            channel_id: chan.id,
+            user_id: userId,
+            unread_count: 0,
+            joined_at: new Date(),
+          });
+          await chanMemberRepo.save(newChanMember);
+        }
+      }
+    } catch {
+      // Non-blocking
     }
 
     return workspace;

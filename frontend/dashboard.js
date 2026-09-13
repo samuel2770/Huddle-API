@@ -917,43 +917,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  let knownWorkspaceCount = 0;
-  let workspaceSyncInterval = null;
-
   function startBackgroundWorkspaceSync() {
     if (workspaceSyncInterval) clearInterval(workspaceSyncInterval);
     workspaceSyncInterval = setInterval(async () => {
       try {
-        const latest = await window.HuddleApi.workspaces.list();
-        if (!latest || latest.length === 0) return;
+        const activeWsId = window.HuddleApi.getActiveWorkspaceId();
+        if (!activeWsId) return;
 
-        if (knownWorkspaceCount > 0 && latest.length > knownWorkspaceCount) {
-          const newWs = latest[latest.length - 1];
-          window.showHuddleToast(
-            `🎉 You were added to "${newWs.name}"! Click the workspace dropdown at top left to switch.`,
-            'info',
-            7000,
-          );
-        }
-        knownWorkspaceCount = latest.length;
-
-        const currentActiveId = window.HuddleApi.getActiveWorkspaceId();
-        const activeWs = latest.find((w) => w.id === currentActiveId) || latest[0];
-        renderWorkspaceUI(activeWs, latest);
-
-        // Also check if current workspace's channel list has new channels
-        const channels = await window.HuddleApi.channels.list(activeWs.id);
+        // Check if current workspace's channel list has new channels
+        const channels = await window.HuddleApi.channels.list(activeWsId);
         if (channels && sidebarChannelsList) {
-          const currentCount = sidebarChannelsList.querySelectorAll('.sidebar-channel-item').length;
-          if (channels.length !== currentCount) {
+          const newChannelIds = channels.map((c) => c.id).join(',');
+          if (sidebarChannelsList.dataset.channelIds !== newChannelIds) {
+            sidebarChannelsList.dataset.channelIds = newChannelIds;
             renderChannelsList(channels);
           }
         }
       } catch {}
-    }, 3500);
+    }, 2500);
   }
 
-  function renderWorkspaceUI(activeWs, allWorkspaces) {
+  function renderWorkspaceUI(activeWs) {
     if (!activeWs) return;
 
     // Update document title & sidebar triggers
@@ -962,68 +946,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     const triggerNameEl = document.querySelector('.workspace-name-text');
     if (triggerNameEl) {
       triggerNameEl.textContent = activeWs.name;
-      // Remove any existing badge
-      const existingBadge = document.getElementById('sidebar-ws-count-badge');
-      if (existingBadge) existingBadge.remove();
-      if (allWorkspaces && allWorkspaces.length > 1) {
-        const badge = document.createElement('span');
-        badge.id = 'sidebar-ws-count-badge';
-        badge.style.cssText = 'background:#FF6A00;color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:auto;margin-right:6px;flex-shrink:0;';
-        badge.textContent = `${allWorkspaces.length} WS`;
-        badge.title = `${allWorkspaces.length} workspaces available. Click to switch.`;
-        triggerNameEl.parentNode?.insertBefore(badge, triggerNameEl.nextSibling);
-      }
     }
 
     const popoverTitleEl = document.querySelector('.popover-workspace-title');
     if (popoverTitleEl) popoverTitleEl.textContent = activeWs.name;
 
-    // Render other workspaces in dropdown popover if available
-    let existingOthersList = document.getElementById('popover-other-workspaces-list');
-    if (!existingOthersList) {
-      existingOthersList = document.createElement('div');
-      existingOthersList.id = 'popover-other-workspaces-list';
-      const popoverHeader = document.querySelector('.popover-row-header');
-      if (popoverHeader && popoverHeader.parentNode) {
-        popoverHeader.parentNode.insertBefore(existingOthersList, popoverHeader.nextSibling);
-      }
-    }
+    // Populate Workspace ID and setup 1-click Copy
+    const wsIdEl = document.getElementById('popover-workspace-id-text');
+    if (wsIdEl) wsIdEl.textContent = activeWs.id || 'N/A';
 
-    existingOthersList.innerHTML = '';
-    const otherWorkspaces = (allWorkspaces || []).filter((w) => w.id !== activeWs.id);
-
-    if (otherWorkspaces.length > 0) {
-      const sectionHeading = document.createElement('div');
-      sectionHeading.style.cssText = 'font-size:11px;font-weight:700;text-transform:uppercase;color:#98A2B3;letter-spacing:0.5px;padding:10px 16px 4px;';
-      sectionHeading.textContent = `Switch Workspace (${otherWorkspaces.length})`;
-      existingOthersList.appendChild(sectionHeading);
-
-      otherWorkspaces.forEach((w) => {
-        const itemBtn = document.createElement('button');
-        itemBtn.type = 'button';
-        itemBtn.className = 'popover-item-btn';
-        itemBtn.style.padding = '8px 16px';
-        itemBtn.innerHTML = `
-          <div class="popover-avatar-lg" style="width:24px;height:24px;font-size:12px;background:#F2F4F7;color:#344054;" aria-hidden="true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-            </svg>
-          </div>
-          <span class="popover-item-label" style="font-size:13px;font-weight:600;flex:1;text-align:left;">${escapeHtml(w.name)}</span>
-          <span style="font-size:11px;color:#FF6A00;font-weight:700;">Switch →</span>
-        `;
-
-        itemBtn.addEventListener('click', async () => {
-          window.HuddleApi.setActiveWorkspaceId(w.id);
-          window.HuddleApi.setActiveWorkspaceName(w.name);
-          window.HuddleApi.setActiveChannelId('');
-          togglePopover(false);
-          window.showHuddleToast(`Switched to "${w.name}"`, 'info');
-          await initializeWorkspace();
-        });
-
-        existingOthersList.appendChild(itemBtn);
-      });
+    const copyBtn = document.getElementById('copy-workspace-id-btn');
+    if (copyBtn) {
+      copyBtn.onclick = async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(activeWs.id);
+          window.showHuddleToast('Workspace ID copied! Share with teammates to join.', 'success');
+        } catch {
+          const temp = document.createElement('input');
+          temp.value = activeWs.id;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand('copy');
+          document.body.removeChild(temp);
+          window.showHuddleToast('Workspace ID copied to clipboard!', 'success');
+        }
+      };
     }
   }
 
@@ -1278,12 +1226,31 @@ document.addEventListener('DOMContentLoaded', async () => {
       const sorted = [...messages].sort((a, b) => new Date(a.created_at || a.createdAt || 0) - new Date(b.created_at || b.createdAt || 0));
 
       messagesList.innerHTML = sorted.map((msg) => {
+        const timeStr = msg.created_at ? formatMessageTime(msg.created_at) : '';
+
+        // Slack-style system announcement for member additions
+        if (msg.content && msg.content.includes('was added to #')) {
+          return `
+            <div class="system-announcement-msg">
+              <span class="announcement-icon" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="8.5" cy="7.5" r="4"></circle>
+                  <line x1="20" y1="8" x2="20" y2="14"></line>
+                  <line x1="23" y1="11" x2="17" y2="11"></line>
+                </svg>
+              </span>
+              <span>${escapeHtml(msg.content)}</span>
+              <span style="font-size:11px;color:#98A2B3;margin-left:4px;">${escapeHtml(timeStr)}</span>
+            </div>
+          `;
+        }
+
         const isMe = currentUser && (msg.sender_id === currentUser.id || msg.senderId === currentUser.id || msg.sender?.id === currentUser.id);
         const senderName = msg.sender?.full_name || msg.sender?.fullName || (isMe ? (currentUser.fullName || 'You') : 'Teammate');
         const senderUsername = msg.sender?.username || (isMe ? (currentUser.username || 'you') : '');
         const initial = senderName.charAt(0).toUpperCase();
         const avatarUrl = msg.sender?.avatar_url || msg.sender?.avatarUrl || (isMe ? currentUser.avatarUrl : null);
-        const timeStr = msg.created_at ? formatMessageTime(msg.created_at) : '';
 
         const avatarInnerHtml = avatarUrl
           ? `<img src="${escapeHtml(avatarUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;" />`

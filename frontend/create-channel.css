@@ -1532,4 +1532,22 @@ html, body {
     max-width: 100%;
     width: 100%;
   }
+
+  .channel-text-input,
+  .channel-textarea {
+    font-size: 16px !important;
+    min-height: 48px;
+  }
+
+  .channel-main-content {
+    padding: 24px 16px 40px 16px;
+    width: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .channel-viewport-wrapper {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }

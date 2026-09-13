@@ -1746,3 +1746,115 @@ html, body {
   border-color: #d0d5dd;
 }
 
+/* ==========================================================================
+   Responsive Modal Shell & System Announcement Styling
+   ========================================================================== */
+.modal-dialog-shell {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 480px;
+  margin: 20px auto;
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-dialog-card {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.16);
+  padding: 32px 28px;
+  position: relative;
+  width: 100%;
+  max-height: 90dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+}
+
+.system-announcement-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 18px;
+  margin: 8px auto;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  background: #f8fafc;
+  border-radius: 24px;
+  border: 1px solid #eaecf0;
+  max-width: 92%;
+  line-height: 1.4;
+}
+
+.system-announcement-msg .announcement-icon {
+  color: #ff6a00;
+  display: inline-flex;
+  align-items: center;
+}
+
+.system-announcement-msg .highlight-handle {
+  color: #ff6a00;
+  font-weight: 700;
+}
+
+@media (max-width: 767.98px) {
+  .modal-dialog-shell {
+    max-width: 95%;
+    margin: auto;
+    max-height: 90dvh;
+  }
+
+  .modal-dialog-card {
+    padding: 24px 18px;
+    border-radius: 18px;
+    max-height: 90dvh;
+  }
+
+  .join-modal-shell {
+    height: auto !important;
+    max-height: 90dvh !important;
+    overflow-y: auto !important;
+    border-radius: 18px !important;
+    margin: auto 12px !important;
+    width: calc(100% - 24px) !important;
+  }
+
+  .join-modal-card {
+    border-radius: 18px !important;
+    overflow-y: auto !important;
+    padding: 24px 18px !important;
+    max-height: 90dvh !important;
+  }
+
+  .modal-mobile-top-bar,
+  .modal-mobile-breadcrumb {
+    display: none !important;
+  }
+
+  .modal-text-input {
+    font-size: 16px !important;
+    min-height: 48px;
+  }
+
+  #channel-chat-input {
+    font-size: 16px !important;
+  }
+
+  .modal-actions-row {
+    margin-top: 18px;
+    gap: 10px;
+  }
+
+  .modal-action-btn {
+    min-height: 46px;
+    font-size: 15px;
+  }
+}
+
+

@@ -7,9 +7,17 @@ import { ChannelMember } from './entities/channel-member.entity.js';
 import { User } from '../users/entities/user.entity.js';
 import { WorkspaceMember } from '../workspaces/entities/workspace-member.entity.js';
 
+import { Message } from '../messages/entities/message.entity.js';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Channel, ChannelMember, User, WorkspaceMember]),
+    TypeOrmModule.forFeature([
+      Channel,
+      ChannelMember,
+      User,
+      WorkspaceMember,
+      Message,
+    ]),
   ],
   controllers: [ChannelsController],
   providers: [ChannelsService],

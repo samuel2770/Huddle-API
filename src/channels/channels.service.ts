@@ -14,6 +14,7 @@ import {
   WorkspaceMember,
   WorkspaceRole,
 } from '../workspaces/entities/workspace-member.entity.js';
+import { Message } from '../messages/entities/message.entity.js';
 import { CreateChannelDto } from './dto/create-channel.dto.js';
 import { QueryChannelsDto } from './dto/query-channels.dto.js';
 
@@ -291,6 +292,27 @@ export class ChannelsService {
 
     const saved = await this.memberRepository.save(member);
     saved.user = targetUser;
+
+    // Post Slack-style announcement message in the channel
+    try {
+      const userRepo = this.dataSource.getRepository(User);
+      const caller = await userRepo.findOne({ where: { id: callerId } });
+      const callerHandle = caller?.username ? `@${caller.username}` : (caller?.full_name || 'Someone');
+      const targetHandle = targetUser.username ? `@${targetUser.username}` : (targetUser.full_name || 'User');
+
+      const messageRepo = this.dataSource.getRepository(Message);
+      const announcement = messageRepo.create({
+        channel_id: channelId,
+        sender_id: callerId,
+        content: `${targetHandle} was added to #${channel.name} by ${callerHandle}.`,
+        is_edited: false,
+        is_deleted: false,
+      });
+      await messageRepo.save(announcement);
+    } catch {
+      // Non-blocking
+    }
+
     return saved;
   }
 
@@ -384,6 +406,29 @@ export class ChannelsService {
         }),
       );
       await this.memberRepository.save(newMembers);
+
+      // Post announcements for added members
+      try {
+        const userRepo = this.dataSource.getRepository(User);
+        const caller = await userRepo.findOne({ where: { id: callerId } });
+        const callerHandle = caller?.username ? `@${caller.username}` : (caller?.full_name || 'Someone');
+        const messageRepo = this.dataSource.getRepository(Message);
+
+        for (const addedId of toAdd) {
+          const u = await userRepo.findOne({ where: { id: addedId } });
+          const targetHandle = u?.username ? `@${u.username}` : (u?.full_name || 'User');
+          const announcement = messageRepo.create({
+            channel_id: channelId,
+            sender_id: callerId,
+            content: `${targetHandle} was added to #${channel.name} by ${callerHandle}.`,
+            is_edited: false,
+            is_deleted: false,
+          });
+          await messageRepo.save(announcement);
+        }
+      } catch {
+        // Non-blocking
+      }
     }
 
     return { added: toAdd, alreadyMembers };
