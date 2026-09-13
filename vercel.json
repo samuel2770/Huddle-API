@@ -33,6 +33,14 @@
       "dest": "/api/index.js"
     },
     {
+      "src": "/users/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "/api/index.js"
+    },
+    {
       "src": "/hello",
       "dest": "/api/index.js"
     },
