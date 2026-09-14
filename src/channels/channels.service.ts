@@ -91,6 +91,13 @@ export class ChannelsService {
             }),
           );
           await manager.save(ChannelMember, additionalMembers);
+
+          // Broadcast channel invite to the newly added users
+          for (const memberId of uniqueIds) {
+            this.chatEventsService.broadcastToUser(memberId, 'channel:invited', {
+              channel: savedChannel,
+            });
+          }
         }
       }
 
@@ -197,6 +204,13 @@ export class ChannelsService {
           members: { user: true },
         },
       });
+
+      // Broadcast invite to the DM target user
+      if (channel) {
+        this.chatEventsService.broadcastToUser(targetUserId, 'channel:invited', {
+          channel,
+        });
+      }
     }
 
     return channel!;
@@ -503,6 +517,11 @@ export class ChannelsService {
             is_deleted: false,
           });
           await messageRepo.save(announcement);
+
+          // Broadcast channel invite to the newly added user
+          this.chatEventsService.broadcastToUser(addedId, 'channel:invited', {
+            channel,
+          });
         }
       } catch {
         // Non-blocking
