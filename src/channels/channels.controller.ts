@@ -25,6 +25,8 @@ import { QueryChannelsDto } from './dto/query-channels.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
+import { CreateDmDto } from './dto/create-dm.dto.js';
+
 @ApiTags('Channels')
 @ApiBearerAuth()
 @Controller(['channels', 'api/v1/channels'])
@@ -42,6 +44,20 @@ export class ChannelsController {
     @Body() createDto: CreateChannelDto,
   ) {
     return this.channelsService.create(userId, createDto);
+  }
+
+  @Post('dm')
+  @ApiOperation({ summary: 'Create or retrieve a direct message channel' })
+  @ApiResponse({ status: 201, description: 'DM channel retrieved or created' })
+  async createDm(
+    @CurrentUser('id') userId: string,
+    @Body() dto: CreateDmDto,
+  ) {
+    return this.channelsService.createOrGetDm(
+      userId,
+      dto.workspaceId,
+      dto.targetUserId,
+    );
   }
 
   @Get()

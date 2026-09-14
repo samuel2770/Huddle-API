@@ -19,6 +19,9 @@ import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
+import { MailService } from '../mail/mail.service.js';
+import type { OnModuleInit } from '@nestjs/common';
+
 // Pre-computed argon2 hash for constant-time comparison on unknown email to prevent timing-based user enumeration
 const DUMMY_HASH =
   '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQxMjM0NTY3OA$9lJ51PjPsk+0Zg86aW7nIuR5O6n9h8f0b7v5d4c3b2a';
@@ -28,15 +31,33 @@ type JwtExpiresIn = NonNullable<
 >['expiresIn'];
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
     @InjectRepository(PasswordResetToken)
     private readonly passwordResetTokenRepository: Repository<PasswordResetToken>,
   ) {}
+
+  onModuleInit() {
+    // Run cleanup on boot and every 12 hours
+    this.cleanupExpiredTokens().catch(() => {});
+    setInterval(() => {
+      this.cleanupExpiredTokens().catch(() => {});
+    }, 12 * 60 * 60 * 1000);
+  }
+
+  async cleanupExpiredTokens(): Promise<number> {
+    const result = await this.refreshTokenRepository
+      .createQueryBuilder()
+      .delete()
+      .where('expires_at < :now OR is_revoked = true', { now: new Date() })
+      .execute();
+    return result.affected ?? 0;
+  }
 
   async signup(dto: SignupDto) {
     const existing = await this.usersService.findByEmail(dto.email);
@@ -212,10 +233,10 @@ export class AuthService {
       saved.token_hash = await argon2.hash(publicToken);
       await this.passwordResetTokenRepository.save(saved);
 
-      // Stubbed mailer interface
-      console.log(
-        `[Mailer Stub] Password reset token for ${user.email}: ${publicToken}`,
-      );
+      // Dispatch real password reset email
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const resetLink = `${baseUrl}/reset-password.html?token=${publicToken}`;
+      await this.mailService.sendPasswordResetEmail(user.email, resetLink);
     }
 
     // Always 200 with generic message to prevent user enumeration

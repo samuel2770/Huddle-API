@@ -5,6 +5,7 @@ if (typeof process.loadEnvFile === 'function') {
   } catch {}
 }
 
+import helmet from 'helmet';
 import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -17,6 +18,22 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.socket.io"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+          imgSrc: ["'self'", "data:", "blob:", "https:"],
+          connectSrc: ["'self'", "ws:", "wss:", "*"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
   app.useStaticAssets(join(process.cwd(), 'frontend'), {
     extensions: ['html'],
   });
@@ -25,8 +42,12 @@ async function bootstrap() {
     extensions: ['html'],
   });
 
+  const frontendUrl = process.env.FRONTEND_URL;
   app.enableCors({
-    origin: true,
+    origin:
+      process.env.NODE_ENV === 'production' && frontendUrl
+        ? [frontendUrl]
+        : true,
     credentials: true,
   });
 

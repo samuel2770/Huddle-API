@@ -7,6 +7,7 @@ import { Channel } from './channels/entities/channel.entity.js';
 import { ChannelMember } from './channels/entities/channel-member.entity.js';
 import { Message } from './messages/entities/message.entity.js';
 import { Attachment } from './messages/entities/attachment.entity.js';
+import { MessageReaction } from './messages/entities/message-reaction.entity.js';
 import { RefreshToken } from './auth/entities/refresh-token.entity.js';
 import { PasswordResetToken } from './auth/entities/password-reset-token.entity.js';
 import { Invite } from './invites/entities/invite.entity.js';
@@ -30,6 +31,7 @@ export const AppDataSource = new DataSource({
     ChannelMember,
     Message,
     Attachment,
+    MessageReaction,
     RefreshToken,
     PasswordResetToken,
     Invite,

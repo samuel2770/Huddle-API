@@ -13,6 +13,7 @@ import {
 import { Channel } from '../../channels/entities/channel.entity.js';
 import { User } from '../../users/entities/user.entity.js';
 import { Attachment } from './attachment.entity.js';
+import { MessageReaction } from './message-reaction.entity.js';
 
 @Entity('messages')
 @Index(['channel_id', 'created_at'])
@@ -73,4 +74,9 @@ export class Message {
     cascade: true,
   })
   attachments: Attachment[];
+
+  @OneToMany(() => MessageReaction, (reaction) => reaction.message, {
+    cascade: true,
+  })
+  reactions: MessageReaction[];
 }

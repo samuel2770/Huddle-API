@@ -39,6 +39,12 @@ export class Channel {
   @Column({ type: 'varchar', length: 80 })
   name: string;
 
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  topic: string | null;
+
   @Column({
     type: 'enum',
     enum: ChannelType,

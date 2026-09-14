@@ -16,6 +16,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 
+import { PresenceService } from '../redis/presence.service.js';
+
 interface AuthenticatedSocket extends Socket {
   userId: string;
   email: string;
@@ -37,13 +39,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly jwtService: JwtService,
     private readonly messagesService: MessagesService,
+    private readonly presenceService: PresenceService,
     @InjectRepository(ChannelMember)
     private readonly memberRepository: Repository<ChannelMember>,
   ) {}
 
   /**
    * JWT auth middleware on WebSocket connection.
-   * Per spec: "Socket.io auth middleware validating the JWT on connection"
    */
   async handleConnection(client: AuthenticatedSocket): Promise<void> {
     try {
@@ -57,11 +59,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
 
-      const payload = this.jwtService.verify(token, {
-        secret:
-          process.env.JWT_ACCESS_SECRET ??
-          'your-access-secret-change-in-production',
-      });
+      const secret = process.env.JWT_ACCESS_SECRET;
+      if (!secret) {
+        throw new Error('JWT_ACCESS_SECRET must be configured');
+      }
+
+      const payload = this.jwtService.verify(token, { secret });
 
       if (!payload.sub || !payload.email) {
         client.emit('error', { message: 'Invalid token payload' });
@@ -78,12 +81,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
       this.connectedUsers.get(client.userId)!.add(client.id);
 
-      // Emit presence event
+      // Set online in Redis presence service
+      await this.presenceService.setOnline(client.userId);
+
+      // Emit presence event to all clients
       this.server.emit('user:online', { userId: client.userId });
 
       client.emit('connected', {
         message: 'Connected to chat gateway',
         userId: client.userId,
+        onlineUserIds: this.getOnlineUserIds(),
       });
     } catch {
       client.emit('error', { message: 'Authentication failed' });
@@ -98,10 +105,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         userSockets.delete(client.id);
         if (userSockets.size === 0) {
           this.connectedUsers.delete(client.userId);
+          // Set offline in Redis presence
+          await this.presenceService.setOffline(client.userId);
           // Only emit offline when ALL sockets for this user are gone
           this.server.emit('user:offline', { userId: client.userId });
         }
       }
+    }
+  }
+
+  /**
+   * Broadcast an event to a channel room from external services
+   */
+  broadcastToChannel(channelId: string, event: string, payload: any): void {
+    if (this.server) {
+      this.server.to(`channel:${channelId}`).emit(event, payload);
     }
   }
 
@@ -240,6 +258,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch {
       return { success: false };
     }
+  }
+
+  @SubscribeMessage('presence:get')
+  handleGetPresence(): { onlineUserIds: string[] } {
+    return { onlineUserIds: this.getOnlineUserIds() };
   }
 
   /**

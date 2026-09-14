@@ -11,6 +11,9 @@ import { Channel } from '../channels/entities/channel.entity.js';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
 
+import { MessageReaction } from './entities/message-reaction.entity.js';
+import { ChatGateway } from '../gateway/chat.gateway.js';
+
 describe('MessagesService', () => {
   let service: MessagesService;
 
@@ -27,6 +30,14 @@ describe('MessagesService', () => {
     save: vi.fn(),
   };
 
+  const mockReactionRepo = {
+    findOne: vi.fn(),
+    find: vi.fn(),
+    create: vi.fn(),
+    save: vi.fn(),
+    remove: vi.fn(),
+  };
+
   const mockChannelRepo = {
     findOne: vi.fn(),
   };
@@ -35,6 +46,10 @@ describe('MessagesService', () => {
     findOne: vi.fn(),
     save: vi.fn(),
     createQueryBuilder: vi.fn(),
+  };
+
+  const mockChatGateway = {
+    broadcastToChannel: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -52,12 +67,20 @@ describe('MessagesService', () => {
           useValue: mockAttachmentRepo,
         },
         {
+          provide: getRepositoryToken(MessageReaction),
+          useValue: mockReactionRepo,
+        },
+        {
           provide: getRepositoryToken(Channel),
           useValue: mockChannelRepo,
         },
         {
           provide: getRepositoryToken(ChannelMember),
           useValue: mockMemberRepo,
+        },
+        {
+          provide: ChatGateway,
+          useValue: mockChatGateway,
         },
       ],
     }).compile();

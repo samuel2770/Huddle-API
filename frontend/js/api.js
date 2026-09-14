@@ -410,6 +410,13 @@
           body: { userIds, usernames },
         });
       },
+
+      async createDm(workspaceId, targetUserId) {
+        return ApiClient.request('/channels/dm', {
+          method: 'POST',
+          body: { workspaceId, targetUserId },
+        });
+      },
     },
 
     invites: {
@@ -433,11 +440,45 @@
         return ApiClient.request(`/channels/${channelId}/messages?limit=${limit}`);
       },
 
-      async send(channelId, content) {
+      async send(channelId, content, replyToMessageId = null) {
+        const body = { content: content.trim() };
+        if (replyToMessageId) body.replyToMessageId = replyToMessageId;
         return ApiClient.request(`/channels/${channelId}/messages`, {
           method: 'POST',
+          body,
+        });
+      },
+
+      async update(channelId, messageId, content) {
+        return ApiClient.request(`/channels/${channelId}/messages/${messageId}`, {
+          method: 'PATCH',
           body: { content: content.trim() },
         });
+      },
+
+      async delete(channelId, messageId) {
+        return ApiClient.request(`/channels/${channelId}/messages/${messageId}`, {
+          method: 'DELETE',
+        });
+      },
+
+      async toggleReaction(channelId, messageId, emoji) {
+        return ApiClient.request(`/channels/${channelId}/messages/${messageId}/reactions`, {
+          method: 'POST',
+          body: { emoji },
+        });
+      },
+
+      async markRead(channelId, messageId) {
+        return ApiClient.request(`/channels/${channelId}/messages/${messageId}/read`, {
+          method: 'PATCH',
+        });
+      },
+    },
+
+    search: {
+      async query(workspaceId, q) {
+        return ApiClient.request(`/search?workspaceId=${workspaceId}&q=${encodeURIComponent(q)}`);
       },
     },
   };

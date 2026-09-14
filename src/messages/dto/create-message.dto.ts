@@ -7,13 +7,18 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { AttachmentDto } from './attachment.dto.js';
 
 export class CreateMessageDto {
   @ValidateIf((o: CreateMessageDto) => !o.attachments || o.attachments.length === 0)
   @IsNotEmpty({ message: 'content is required when attachments are not provided' })
   @IsString({ message: 'content must be a string' })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string'
+      ? value.replace(/</g, '&lt;').replace(/>/g, '&gt;').trim()
+      : value,
+  )
   content?: string;
 
   @IsOptional()

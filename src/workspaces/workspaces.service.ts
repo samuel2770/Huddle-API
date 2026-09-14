@@ -26,21 +26,26 @@ export class WorkspacesService {
   ) {}
 
   async create(userId: string, dto: CreateWorkspaceDto): Promise<Workspace> {
-    // Check slug uniqueness (also enforced at DB level via unique constraint)
-    const existingSlug = await this.workspaceRepository.findOne({
-      where: { slug: dto.slug },
-    });
-    if (existingSlug) {
-      throw new ConflictException(
-        `Workspace with slug "${dto.slug}" already exists`,
-      );
+    // Resolve slug collisions with random suffix retry loop
+    let finalSlug = dto.slug;
+    let attempts = 0;
+    while (await this.workspaceRepository.findOne({ where: { slug: finalSlug } })) {
+      attempts++;
+      if (attempts > 5) {
+        throw new ConflictException(
+          `Workspace with slug "${dto.slug}" already exists`,
+        );
+      }
+      const suffix = Math.random().toString(36).substring(2, 6);
+      const base = dto.slug.substring(0, 55).replace(/-+$/, '');
+      finalSlug = `${base}-${suffix}`;
     }
 
     // Use a transaction to atomically create workspace + owner membership
     return this.dataSource.transaction(async (manager) => {
       const workspace = manager.create(Workspace, {
         name: dto.name,
-        slug: dto.slug,
+        slug: finalSlug,
         logo_url: dto.logoUrl ?? null,
         owner_id: userId,
       });

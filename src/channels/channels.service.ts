@@ -101,15 +101,17 @@ export class ChannelsService {
       .createQueryBuilder('channel')
       .leftJoin(
         'channel.members',
-        'member',
-        'member.user_id = :userId',
+        'myMembership',
+        'myMembership.user_id = :userId',
         { userId },
       )
+      .leftJoinAndSelect('channel.members', 'member')
+      .leftJoinAndSelect('member.user', 'memberUser')
       .where('channel.workspace_id = :workspaceId', {
         workspaceId: query.workspaceId,
       })
       .andWhere(
-        '(channel.type = :publicType OR member.id IS NOT NULL OR channel.created_by = :userId)',
+        '(channel.type = :publicType OR myMembership.id IS NOT NULL OR channel.created_by = :userId)',
         {
           publicType: ChannelType.PUBLIC,
           userId,
@@ -127,6 +129,75 @@ export class ChannelsService {
     qb.orderBy('channel.created_at', 'ASC');
 
     return qb.getMany();
+  }
+
+  async createOrGetDm(
+    userId: string,
+    workspaceId: string,
+    targetUserId: string,
+  ): Promise<Channel> {
+    if (userId === targetUserId) {
+      throw new BadRequestException('Cannot start a direct message with yourself');
+    }
+
+    // Verify target user exists
+    const userRepo = this.dataSource.getRepository(User);
+    const targetUser = await userRepo.findOne({ where: { id: targetUserId } });
+    if (!targetUser) {
+      throw new NotFoundException('Target user not found');
+    }
+
+    const sortedIds = [userId, targetUserId].sort();
+    const dmName = `dm:${sortedIds[0].substring(0, 8)}_${sortedIds[1].substring(0, 8)}_${sortedIds[0].substring(24)}_${sortedIds[1].substring(24)}`;
+
+    let channel = await this.channelRepository.findOne({
+      where: {
+        workspace_id: workspaceId,
+        name: dmName,
+        type: ChannelType.DM,
+      },
+      relations: {
+        members: { user: true },
+      },
+    });
+
+    if (!channel) {
+      channel = await this.dataSource.transaction(async (manager) => {
+        const newChan = manager.create(Channel, {
+          workspace_id: workspaceId,
+          name: dmName,
+          type: ChannelType.DM,
+          created_by: userId,
+          is_archived: false,
+        });
+        const saved = await manager.save(Channel, newChan);
+
+        const m1 = manager.create(ChannelMember, {
+          channel_id: saved.id,
+          user_id: userId,
+          unread_count: 0,
+          joined_at: new Date(),
+        });
+        const m2 = manager.create(ChannelMember, {
+          channel_id: saved.id,
+          user_id: targetUserId,
+          unread_count: 0,
+          joined_at: new Date(),
+        });
+
+        await manager.save(ChannelMember, [m1, m2]);
+        return saved;
+      });
+
+      channel = await this.channelRepository.findOne({
+        where: { id: channel.id },
+        relations: {
+          members: { user: true },
+        },
+      });
+    }
+
+    return channel!;
   }
 
   async findOne(channelId: string, userId: string): Promise<Channel> {

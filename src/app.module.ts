@@ -15,12 +15,14 @@ import { RedisModule } from './redis/redis.module.js';
 import { InvitesModule } from './invites/invites.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { UploadsModule } from './uploads/uploads.module.js';
+import { SearchModule } from './search/search.module.js';
 import { User } from './users/entities/user.entity.js';
 import { Workspace } from './workspaces/entities/workspace.entity.js';
 import { Channel } from './channels/entities/channel.entity.js';
 import { ChannelMember } from './channels/entities/channel-member.entity.js';
 import { Message } from './messages/entities/message.entity.js';
 import { Attachment } from './messages/entities/attachment.entity.js';
+import { MessageReaction } from './messages/entities/message-reaction.entity.js';
 import { RefreshToken } from './auth/entities/refresh-token.entity.js';
 import { PasswordResetToken } from './auth/entities/password-reset-token.entity.js';
 import { WorkspaceMember } from './workspaces/entities/workspace-member.entity.js';
@@ -43,6 +45,7 @@ import { Invite } from './invites/entities/invite.entity.js';
         ChannelMember,
         Message,
         Attachment,
+        MessageReaction,
         RefreshToken,
         PasswordResetToken,
         WorkspaceMember,
@@ -56,7 +59,7 @@ import { Invite } from './invites/entities/invite.entity.js';
     ThrottlerModule.forRoot([
       {
         ttl: parseInt(process.env.THROTTLE_TTL ?? '60000', 10),
-        limit: parseInt(process.env.THROTTLE_LIMIT ?? '10', 10),
+        limit: parseInt(process.env.THROTTLE_LIMIT ?? '300', 10),
       },
     ]),
     CommonModule,
@@ -70,6 +73,7 @@ import { Invite } from './invites/entities/invite.entity.js';
     InvitesModule,
     MailModule,
     UploadsModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

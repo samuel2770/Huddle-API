@@ -1,7 +1,16 @@
 /**
- * Huddle Workspace Dashboard - Interactive Logic & Backend Integration
- * Includes Workspace Popover, Mobile Drawer, Join Workspace Modal, Create Workspace Modal,
- * and Live Channels / Workspaces Data Synchronization.
+ * Huddle Workspace Dashboard - Interactive Logic & Full Backend Integration
+ * Features:
+ * - Real-Time WebSockets (Socket.io /chat namespace) with instant message delivery
+ * - Live Typing Indicators ("X is typing...")
+ * - Online Presence Tracking (Green dots on avatars & DM lists)
+ * - Message Emoji Reactions (Quick bar & interactive chips)
+ * - Message Editing & Soft Deletion
+ * - Direct Messages (DMs) conversation flow & teammate picker modal
+ * - Workspace Search (Real-time debounced query across channels & messages)
+ * - Shimmer Skeleton Loading States
+ * - Date Dividers & Consecutive Message Grouping
+ * - Workspace Switcher, Join/Create Modals, Profile Edit, and Member Invites
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -10,9 +19,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // Hoisted references — must be declared before initializeWorkspace()
+  // Hoisted references
   let workspaceSyncInterval = null;
-  let knownWorkspaceCount = 0;
+  let socket = null;
+  let activeChannel = null;
+  let onlineUsersSet = new Set();
+  let typingUsersMap = new Map(); // userId -> timer
+  let isTypingSelf = false;
+  let typingSelfTimeout = null;
 
   // DOM Elements - Sidebar & Switcher
   const switcherTrigger = document.getElementById('workspace-switcher-trigger');
@@ -53,9 +67,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const dialogMessage = document.getElementById('action-dialog-message');
   const dialogCloseBtn = document.getElementById('action-dialog-close-btn');
 
-  // Sidebar Channels Elements
+  // Sidebar Channels & DMs Elements
   const sidebarSectionsWrapper = document.getElementById('sidebar-sections-wrapper');
   const sidebarChannelsList = document.getElementById('sidebar-channels-list');
+  const sidebarDmsList = document.getElementById('sidebar-dms-list');
   const sidebarAddDmBtn = document.getElementById('sidebar-add-dm-btn');
 
   // User Profile Modal Elements
@@ -84,13 +99,152 @@ document.addEventListener('DOMContentLoaded', async () => {
   const addMemberLiveResults = document.getElementById('add-member-live-results');
   const addMemberModalSubheading = document.getElementById('add-member-modal-subheading');
 
-  // --- Workspace Popover Logic ---
+  // --- Real-Time Socket.io Connection ---
+  function initWebSocket() {
+    if (typeof io === 'undefined') {
+      console.warn('[Huddle] Socket.io client not found. Falling back.');
+      return;
+    }
 
+    const token = window.HuddleApi.getToken();
+    if (!token) return;
+
+    if (socket) {
+      socket.disconnect();
+    }
+
+    socket = io('/chat', {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 10,
+    });
+
+    socket.on('connect', () => {
+      console.log('[Huddle] WebSocket connected to /chat namespace');
+      if (activeChannel) {
+        socket.emit('channel:join', { channelId: activeChannel.id });
+      }
+    });
+
+    socket.on('connected', (data) => {
+      if (data && Array.isArray(data.onlineUserIds)) {
+        onlineUsersSet = new Set(data.onlineUserIds);
+        updateAllPresenceDots();
+      }
+    });
+
+    socket.on('user:online', ({ userId }) => {
+      if (userId) {
+        onlineUsersSet.add(userId);
+        updateAllPresenceDots();
+      }
+    });
+
+    socket.on('user:offline', ({ userId }) => {
+      if (userId) {
+        onlineUsersSet.delete(userId);
+        updateAllPresenceDots();
+      }
+    });
+
+    socket.on('message:new', ({ message, channelId }) => {
+      if (activeChannel && activeChannel.id === channelId) {
+        handleIncomingMessage(message);
+      } else {
+        incrementChannelBadge(channelId);
+      }
+    });
+
+    socket.on('message:updated', ({ message, channelId }) => {
+      if (activeChannel && activeChannel.id === channelId) {
+        handleMessageUpdated(message);
+      }
+    });
+
+    socket.on('message:deleted', ({ messageId, channelId }) => {
+      if (activeChannel && activeChannel.id === channelId) {
+        handleMessageDeleted(messageId);
+      }
+    });
+
+    socket.on('message:reaction', ({ messageId, reactions, channelId }) => {
+      if (activeChannel && activeChannel.id === channelId) {
+        handleReactionsUpdated(messageId, reactions);
+      }
+    });
+
+    socket.on('typing:start', ({ userId, channelId }) => {
+      if (activeChannel && activeChannel.id === channelId) {
+        showTypingIndicator(userId);
+      }
+    });
+
+    socket.on('typing:stop', ({ userId, channelId }) => {
+      if (activeChannel && activeChannel.id === channelId) {
+        hideTypingIndicator(userId);
+      }
+    });
+
+    window.huddleSocket = socket;
+  }
+
+  function updateAllPresenceDots() {
+    document.querySelectorAll('[data-user-id]').forEach((el) => {
+      const uId = el.dataset.userId;
+      const isOnline = onlineUsersSet.has(uId);
+      const dot = el.querySelector('.presence-dot');
+      if (dot) {
+        if (isOnline) {
+          dot.classList.add('online');
+        } else {
+          dot.classList.remove('online');
+        }
+      }
+    });
+
+    // Update active channel header online count
+    const countEl = document.getElementById('channel-online-count-badge');
+    if (countEl && currentChannelMembers) {
+      const onlineCount = currentChannelMembers.filter((m) =>
+        onlineUsersSet.has(m.userId || m.user_id || m.id),
+      ).length;
+      countEl.textContent = `${onlineCount} online`;
+    }
+  }
+
+  function incrementChannelBadge(channelId) {
+    const item = document.querySelector(`[data-channel-id="${channelId}"]`);
+    if (item) {
+      item.classList.add('has-unread');
+      let badge = item.querySelector('.channel-unread-badge');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'channel-unread-badge';
+        badge.textContent = '1';
+        item.querySelector('.sidebar-channel-link')?.appendChild(badge);
+      } else {
+        const cur = parseInt(badge.textContent || '0', 10);
+        badge.textContent = String(cur + 1);
+      }
+    }
+  }
+
+  function clearChannelBadge(channelId) {
+    const item = document.querySelector(`[data-channel-id="${channelId}"]`);
+    if (item) {
+      item.classList.remove('has-unread');
+      const badge = item.querySelector('.channel-unread-badge');
+      if (badge) badge.remove();
+    }
+  }
+
+  // --- Workspace Popover Logic ---
   function togglePopover(forceState) {
     if (!workspacePopover || !switcherTrigger) return;
-    const shouldOpen = typeof forceState === 'boolean'
-      ? forceState
-      : !workspacePopover.classList.contains('open');
+    const shouldOpen =
+      typeof forceState === 'boolean'
+        ? forceState
+        : !workspacePopover.classList.contains('open');
 
     if (shouldOpen) {
       workspacePopover.classList.add('open');
@@ -129,7 +283,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ========================================================================
   // Join a Workspace Modal Logic
   // ========================================================================
-
   let isJoinModalClosing = false;
 
   function openJoinModal() {
@@ -183,9 +336,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   function validateWorkspaceId() {
     if (!workspaceIdInput || !joinModalSubmitBtn) return;
     const val = workspaceIdInput.value.trim();
-    const isValid = val.length > 0;
+    const hasValue = val.length > 0;
 
-    if (isValid) {
+    if (hasValue) {
       joinModalSubmitBtn.disabled = false;
       joinModalSubmitBtn.classList.add('active');
     } else {
@@ -260,7 +413,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ========================================================================
   // Create a Workspace Modal Logic
   // ========================================================================
-
   let isCreateModalClosing = false;
 
   function openCreateModal() {
@@ -376,7 +528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.HuddleApi.setActiveWorkspaceId(ws.id);
         window.HuddleApi.setActiveWorkspaceName(ws.name);
 
-        // Auto-create a #general channel for this new workspace
+        // Auto-create initial #general channel
         try {
           await window.HuddleApi.channels.create(ws.id, 'general', 'public');
         } catch {}
@@ -386,114 +538,82 @@ document.addEventListener('DOMContentLoaded', async () => {
         await initializeWorkspace();
       } catch (err) {
         console.error('[Huddle Create Workspace Error]:', err);
-        window.showHuddleToast(err.message || 'Failed to create workspace.', 'error');
+        window.showHuddleToast(err.message || 'Failed to create workspace', 'error');
       } finally {
-        createModalSubmitBtn.textContent = 'Create Workspace';
+        createModalSubmitBtn.textContent = 'Create workspace';
         validateWorkspaceName();
       }
     });
   }
 
   // ========================================================================
-  // User Profile Modal Logic (Avatar, Full Name, Unique Username, Email)
+  // User Profile Modal Logic
   // ========================================================================
+  function openProfileModal() {
+    const user = window.HuddleApi ? window.HuddleApi.getUser() : null;
+    if (!user) return;
 
-  let isProfileModalClosing = false;
+    if (profileFullNameInput) profileFullNameInput.value = user.fullName || '';
+    if (profileUsernameInput) profileUsernameInput.value = user.username || '';
+    if (profileEmailInput) profileEmailInput.value = user.email || '';
+    if (profileAvatarInput) profileAvatarInput.value = user.avatarUrl || '';
+
+    updateProfileAvatarPreview(user.avatarUrl, user.fullName);
+
+    userProfileModal.classList.remove('closing');
+    userProfileModal.classList.add('open');
+    userProfileModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeProfileModal() {
+    if (!userProfileModal || !userProfileModal.classList.contains('open')) return;
+    userProfileModal.classList.add('closing');
+    setTimeout(() => {
+      userProfileModal.classList.remove('open', 'closing');
+      userProfileModal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }, 180);
+  }
 
   function updateProfileAvatarPreview(url, name) {
     if (!profileAvatarImg || !profileAvatarInitials) return;
-    if (url && url.trim()) {
+    if (url && url.trim().length > 0) {
       profileAvatarImg.src = url.trim();
       profileAvatarImg.style.display = 'block';
       profileAvatarInitials.style.display = 'none';
       profileAvatarImg.onerror = () => {
         profileAvatarImg.style.display = 'none';
-        profileAvatarInitials.style.display = 'block';
+        profileAvatarInitials.style.display = 'flex';
         profileAvatarInitials.textContent = (name || 'U').charAt(0).toUpperCase();
       };
     } else {
       profileAvatarImg.style.display = 'none';
-      profileAvatarInitials.style.display = 'block';
+      profileAvatarInitials.style.display = 'flex';
       profileAvatarInitials.textContent = (name || 'U').charAt(0).toUpperCase();
     }
   }
 
-  function openProfileModal() {
-    togglePopover(false);
-    closeMobileDrawer();
-
-    const currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
-    if (!currentUser) return;
-
-    if (profileFullNameInput) profileFullNameInput.value = currentUser.fullName || '';
-    if (profileUsernameInput) profileUsernameInput.value = currentUser.username || '';
-    if (profileEmailInput) profileEmailInput.value = currentUser.email || '';
-    if (profileAvatarInput) profileAvatarInput.value = currentUser.avatarUrl || '';
-
-    updateProfileAvatarPreview(currentUser.avatarUrl, currentUser.fullName);
-
-    isProfileModalClosing = false;
-    userProfileModal.classList.remove('closing');
-    userProfileModal.classList.add('open');
-    userProfileModal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-
-    setTimeout(() => {
-      profileUsernameInput?.focus();
-    }, 60);
-  }
-
-  function closeProfileModal() {
-    if (isProfileModalClosing || !userProfileModal || !userProfileModal.classList.contains('open')) return;
-
-    isProfileModalClosing = true;
-    userProfileModal.classList.add('closing');
-
-    setTimeout(() => {
-      userProfileModal.classList.remove('open', 'closing');
-      userProfileModal.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
-      isProfileModalClosing = false;
-    }, 180);
-  }
-
-  if (userProfileBtn) {
-    userProfileBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openProfileModal();
-    });
-  }
-
-  if (profileModalCloseBtn) {
-    profileModalCloseBtn.addEventListener('click', closeProfileModal);
-  }
-
-  if (profileModalCancelBtn) {
-    profileModalCancelBtn.addEventListener('click', closeProfileModal);
-  }
-
-  if (profileModalBackdrop) {
-    profileModalBackdrop.addEventListener('click', closeProfileModal);
-  }
-
   if (profileAvatarInput) {
     profileAvatarInput.addEventListener('input', () => {
-      const name = profileFullNameInput ? profileFullNameInput.value : '';
-      updateProfileAvatarPreview(profileAvatarInput.value, name);
+      updateProfileAvatarPreview(profileAvatarInput.value, profileFullNameInput?.value);
     });
   }
 
   document.querySelectorAll('.avatar-preset-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const presetUrl = btn.getAttribute('data-url') || '';
-      if (profileAvatarInput) {
-        profileAvatarInput.value = presetUrl;
+    btn.addEventListener('click', () => {
+      const url = btn.dataset.avatarUrl;
+      if (url && profileAvatarInput) {
+        profileAvatarInput.value = url;
+        updateProfileAvatarPreview(url, profileFullNameInput?.value);
       }
-      const name = profileFullNameInput ? profileFullNameInput.value : '';
-      updateProfileAvatarPreview(presetUrl, name);
     });
   });
+
+  if (userProfileBtn) userProfileBtn.addEventListener('click', openProfileModal);
+  if (profileModalCloseBtn) profileModalCloseBtn.addEventListener('click', closeProfileModal);
+  if (profileModalCancelBtn) profileModalCancelBtn.addEventListener('click', closeProfileModal);
+  if (profileModalBackdrop) profileModalBackdrop.addEventListener('click', closeProfileModal);
 
   if (profileEditForm) {
     profileEditForm.addEventListener('submit', async (e) => {
@@ -544,9 +664,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ========================================================================
-  // Channel Add Member Modal Logic (Add by Unique Username or Email)
+  // Channel Add Member Modal Logic
   // ========================================================================
-
   let isAddMemberModalClosing = false;
   let currentActiveChannelForAdd = null;
   let searchDebounceTimer = null;
@@ -648,36 +767,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    addMemberLiveResults.innerHTML = users.map((u) => {
-      const initial = (u.fullName || 'U').charAt(0).toUpperCase();
-      const avatarHtml = u.avatarUrl
-        ? `<div class="live-result-avatar"><img src="${escapeHtml(u.avatarUrl)}" alt="" /></div>`
-        : `<div class="live-result-avatar">${escapeHtml(initial)}</div>`;
+    addMemberLiveResults.innerHTML = users
+      .slice(0, 5)
+      .map((u) => {
+        const initial = (u.fullName || u.username || 'U').charAt(0).toUpperCase();
+        const avatarHtml = u.avatarUrl
+          ? `<img src="${escapeHtml(u.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
+          : initial;
 
-      return `
-        <div class="live-result-item" data-username="${escapeHtml(u.username || '')}" data-user-id="${escapeHtml(u.id)}">
-          <div class="live-result-user">
-            ${avatarHtml}
-            <div class="live-result-info">
-              <span class="live-result-name">${escapeHtml(u.fullName || '')}</span>
-              <span class="live-result-handle">@${escapeHtml(u.username || '')}</span>
+        return `
+          <div class="live-search-user-row" data-username="${escapeHtml(u.username)}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-radius:8px;transition:background 0.12s ease;">
+            <div style="width:28px;height:28px;border-radius:50%;background:#FFF4ED;color:#FF6A00;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              ${avatarHtml}
             </div>
+            <div style="flex:1;overflow:hidden;">
+              <div style="font-size:13px;font-weight:600;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(u.fullName || u.username)}</div>
+              <div style="font-size:11.5px;color:#667085;">@${escapeHtml(u.username)}</div>
+            </div>
+            <span style="font-size:12px;color:#FF6A00;font-weight:600;">Add</span>
           </div>
-          <span class="live-result-add-badge">+ Select</span>
-        </div>
-      `;
-    }).join('');
+        `;
+      })
+      .join('');
 
     addMemberLiveResults.style.display = 'block';
 
-    addMemberLiveResults.querySelectorAll('.live-result-item').forEach((item) => {
-      item.addEventListener('click', () => {
-        const username = item.getAttribute('data-username');
-        if (username && channelMemberSearchInput) {
-          channelMemberSearchInput.value = `@${username}`;
-          addMemberLiveResults.style.display = 'none';
+    addMemberLiveResults.querySelectorAll('.live-search-user-row').forEach((row) => {
+      row.addEventListener('click', () => {
+        const selectedU = row.dataset.username;
+        if (channelMemberSearchInput && selectedU) {
+          channelMemberSearchInput.value = `@${selectedU}`;
           validateAddMemberInput();
-          channelAddMemberSubmitBtn?.focus();
+          addMemberLiveResults.style.display = 'none';
         }
       });
     });
@@ -686,23 +807,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (channelAddMemberForm) {
     channelAddMemberForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!currentActiveChannelForAdd || !channelAddMemberSubmitBtn || channelAddMemberSubmitBtn.disabled) return;
+      if (!channelAddMemberSubmitBtn || channelAddMemberSubmitBtn.disabled) return;
+      if (!currentActiveChannelForAdd) return;
 
-      const rawInput = channelMemberSearchInput.value.trim();
-      if (!rawInput) return;
+      const target = channelMemberSearchInput.value.trim();
+      if (!target) return;
 
-      const target = rawInput.replace(/^@/, '');
       channelAddMemberSubmitBtn.disabled = true;
       channelAddMemberSubmitBtn.textContent = 'Adding...';
 
       try {
         await window.HuddleApi.channels.addMember(currentActiveChannelForAdd.id, target);
         closeAddMemberModal();
-        window.showHuddleToast(`Added @${target} to #${currentActiveChannelForAdd.name}!`, 'success');
-        // Refresh channel view so member list & messages update
-        renderChannelMainView(currentActiveChannelForAdd);
+        window.showHuddleToast(`Added ${target} to #${currentActiveChannelForAdd.name}!`, 'success');
+        if (activeChannel && activeChannel.id === currentActiveChannelForAdd.id) {
+          renderChannelMainView(activeChannel);
+        }
       } catch (err) {
-        console.error('[Huddle Add Channel Member Error]:', err);
+        console.error('[Huddle Add Member Error]:', err);
         window.showHuddleToast(err.message || 'Failed to add member to channel', 'error');
       } finally {
         channelAddMemberSubmitBtn.disabled = false;
@@ -713,271 +835,282 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // ========================================================================
-  // Global Keyboard Shortcuts (Escape Key)
+  // Direct Messages (DMs) Teammate Picker Modal
   // ========================================================================
+  let dmPickerModal = null;
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      if (joinModalOverlay && joinModalOverlay.classList.contains('open')) {
-        closeJoinModal();
-      } else if (createModalOverlay && createModalOverlay.classList.contains('open')) {
-        closeCreateModal();
-      } else if (userProfileModal && userProfileModal.classList.contains('open')) {
-        closeProfileModal();
-      } else if (channelAddMemberModal && channelAddMemberModal.classList.contains('open')) {
-        closeAddMemberModal();
-      } else {
-        togglePopover(false);
-        closeMobileDrawer();
-        closeActionDialog();
-      }
+  function openDmPickerModal() {
+    const activeWsId = window.HuddleApi.getActiveWorkspaceId();
+    if (!activeWsId) {
+      window.showHuddleToast('No active workspace selected', 'error');
+      return;
     }
-  });
 
-  // ========================================================================
-  // General Action Dialog Helper
-  // ========================================================================
+    if (!dmPickerModal) {
+      dmPickerModal = document.createElement('div');
+      dmPickerModal.id = 'dm-picker-modal';
+      dmPickerModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(16, 24, 40, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      `;
+      dmPickerModal.innerHTML = `
+        <div style="background:#ffffff;border-radius:16px;max-width:440px;width:100%;padding:28px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);position:relative;">
+          <button type="button" id="close-dm-modal" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#98A2B3;cursor:pointer;padding:4px;" aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+          <div style="width:44px;height:44px;border-radius:12px;background:#FFF4ED;color:#FF6A00;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+          <h3 style="font-size:19px;font-weight:700;color:#101828;margin-bottom:6px;">Direct Message</h3>
+          <p style="font-size:13.5px;color:#667085;margin-bottom:16px;">Select a teammate to start a conversation.</p>
+          <input
+            type="text"
+            id="dm-search-member-input"
+            placeholder="Search teammates..."
+            style="width:100%;height:42px;padding:0 14px;border:1.5px solid #D0D5DD;border-radius:10px;font-size:14px;outline:none;margin-bottom:14px;"
+          />
+          <div id="dm-members-list-container" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
+            <div style="text-align:center;color:#98A2B3;padding:12px;font-size:13px;">Loading teammates...</div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(dmPickerModal);
 
-  function showActionDialog(title, message) {
-    if (!actionDialog) return;
-    dialogTitle.textContent = title;
-    dialogMessage.textContent = message;
-    actionDialog.classList.add('open');
-    actionDialog.setAttribute('aria-hidden', 'false');
+      dmPickerModal.querySelector('#close-dm-modal').addEventListener('click', () => {
+        dmPickerModal.style.display = 'none';
+      });
+      dmPickerModal.addEventListener('click', (e) => {
+        if (e.target === dmPickerModal) dmPickerModal.style.display = 'none';
+      });
+    }
+
+    dmPickerModal.style.display = 'flex';
+    const input = dmPickerModal.querySelector('#dm-search-member-input');
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+
+    loadTeammatesForDm(activeWsId);
   }
 
-  function closeActionDialog() {
-    if (!actionDialog) return;
-    actionDialog.classList.remove('open');
-    actionDialog.setAttribute('aria-hidden', 'true');
-  }
+  async function loadTeammatesForDm(workspaceId) {
+    const container = document.getElementById('dm-members-list-container');
+    if (!container) return;
 
-  if (dialogCloseBtn) {
-    dialogCloseBtn.addEventListener('click', closeActionDialog);
-  }
+    try {
+      const members = await window.HuddleApi.workspaces.getMembers(workspaceId);
+      const currentUser = window.HuddleApi.getUser();
+      const otherMembers = (members || []).filter(
+        (m) => m.userId !== currentUser?.id && m.id !== currentUser?.id,
+      );
 
-  if (actionDialog) {
-    actionDialog.addEventListener('click', (e) => {
-      if (e.target === actionDialog) closeActionDialog();
-    });
-  }
-
-  // Main Content: Create a Channel trigger
-  if (createChannelBtn) {
-    createChannelBtn.addEventListener('click', () => {
-      window.location.href = 'create-channel.html';
-    });
-  }
-
-  // Mobile Off-Canvas Drawer
-  function openMobileDrawer() {
-    sidebar?.classList.add('drawer-open');
-    drawerBackdrop?.classList.add('active');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeMobileDrawer() {
-    sidebar?.classList.remove('drawer-open');
-    drawerBackdrop?.classList.remove('active');
-    document.body.style.overflow = '';
-  }
-
-  if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileDrawer);
-  if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeMobileDrawer);
-  if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeMobileDrawer);
-
-  // Search input feedback
-  if (searchInput) {
-    searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const query = searchInput.value.trim();
-        if (query) {
-          showActionDialog('Search', `Searching Huddle for "${query}"...`);
-        }
+      if (otherMembers.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center;color:#667085;padding:16px;font-size:13px;">
+            No other teammates in this workspace yet. Invite members to chat with them!
+          </div>
+        `;
+        return;
       }
-    });
-  }
 
-  // Log Out Link
-  if (sidebarLogoutBtn) {
-    sidebarLogoutBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      try {
-        if (window.HuddleApi) await window.HuddleApi.auth.logout();
-      } catch {}
-      if (window.HuddleApi) window.HuddleApi.clearSession();
-      window.location.href = 'signin.html';
-    });
+      function renderList(list) {
+        container.innerHTML = list
+          .map((m) => {
+            const uId = m.userId || m.id;
+            const name = m.fullName || m.name || m.username || 'Teammate';
+            const username = m.username || 'user';
+            const isOnline = onlineUsersSet.has(uId);
+            const initial = name.charAt(0).toUpperCase();
+            const avatarHtml = m.avatarUrl
+              ? `<img src="${escapeHtml(m.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
+              : initial;
+
+            return `
+              <div class="dm-member-choice" data-user-id="${escapeHtml(uId)}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background 0.12s ease;border:1px solid #EAECF0;">
+                <div style="position:relative;width:34px;height:34px;border-radius:50%;background:#FFF4ED;color:#FF6A00;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  ${avatarHtml}
+                  <span class="presence-dot ${isOnline ? 'online' : ''}" style="position:absolute;bottom:-1px;right:-1px;border:2px solid #fff;"></span>
+                </div>
+                <div style="flex:1;">
+                  <div style="font-size:13.5px;font-weight:600;color:#101828;">${escapeHtml(name)}</div>
+                  <div style="font-size:12px;color:#667085;">@${escapeHtml(username)}</div>
+                </div>
+                <span style="font-size:12px;color:#FF6A00;font-weight:600;">Chat</span>
+              </div>
+            `;
+          })
+          .join('');
+
+        container.querySelectorAll('.dm-member-choice').forEach((row) => {
+          row.addEventListener('click', async () => {
+            const targetId = row.dataset.userId;
+            if (!targetId) return;
+
+            try {
+              if (dmPickerModal) dmPickerModal.style.display = 'none';
+              window.showHuddleToast('Opening conversation...', 'info');
+              const dmChannel = await window.HuddleApi.channels.createDm(workspaceId, targetId);
+              await loadWorkspaceChannels(workspaceId);
+              renderChannelMainView(dmChannel);
+            } catch (err) {
+              console.error('[Huddle DM Create Error]:', err);
+              window.showHuddleToast(err.message || 'Failed to start direct message', 'error');
+            }
+          });
+        });
+      }
+
+      renderList(otherMembers);
+
+      const searchInputEl = document.getElementById('dm-search-member-input');
+      if (searchInputEl) {
+        searchInputEl.oninput = () => {
+          const q = searchInputEl.value.trim().toLowerCase();
+          const filtered = otherMembers.filter(
+            (m) =>
+              (m.fullName && m.fullName.toLowerCase().includes(q)) ||
+              (m.username && m.username.toLowerCase().includes(q)) ||
+              (m.email && m.email.toLowerCase().includes(q)),
+          );
+          renderList(filtered);
+        };
+      }
+    } catch (err) {
+      container.innerHTML = `<div style="color:#F04438;font-size:13px;padding:8px;">Failed to load teammates.</div>`;
+    }
   }
 
   if (sidebarAddDmBtn) {
-    sidebarAddDmBtn.addEventListener('click', () => {
-      showActionDialog('Direct Messages', 'Direct messaging flow coming soon!');
+    sidebarAddDmBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDmPickerModal();
     });
   }
 
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
-  }
-
   // ========================================================================
-  // Workspace & Channels Initialization & Rendering
+  // Full-Text Workspace Search Logic
   // ========================================================================
+  let searchResultsPanel = null;
+  let searchDebounce = null;
 
-  function updateUserUI(user) {
-    if (!user) return;
-    const userNameEl = document.getElementById('sidebar-user-name') || document.querySelector('.user-name');
-    const userHandleEl = document.getElementById('sidebar-user-handle') || document.querySelector('.user-handle');
-    const userEmailEl = document.getElementById('sidebar-user-email') || document.querySelector('.user-email');
-    const userAvatarEl = document.getElementById('sidebar-user-avatar-circle') || document.querySelector('.user-avatar-circle');
-    const mobileAvatarEl = document.querySelector('.mobile-avatar');
+  function initSearchPanel() {
+    if (!searchInput) return;
 
-    if (userNameEl) userNameEl.textContent = user.fullName || 'Huddle Member';
-    if (userHandleEl) userHandleEl.textContent = `@${user.username || 'user'}`;
-    if (userEmailEl) {
-      userEmailEl.textContent = user.email || '';
-      userEmailEl.title = user.email || '';
-    }
-    if (mobileAvatarEl) {
-      mobileAvatarEl.title = `${user.fullName || 'User'} (@${user.username || ''})`;
-    }
+    searchResultsPanel = document.createElement('div');
+    searchResultsPanel.id = 'sidebar-search-results';
+    searchResultsPanel.className = 'search-results-panel';
+    searchInput.parentElement.style.position = 'relative';
+    searchInput.parentElement.appendChild(searchResultsPanel);
 
-    if (userAvatarEl) {
-      if (user.avatarUrl && user.avatarUrl.trim()) {
-        userAvatarEl.innerHTML = `<img src="${escapeHtml(user.avatarUrl.trim())}" alt="" style="width:100%;height:100%;object-fit:cover;" />`;
-      } else {
-        const initial = (user.fullName || 'U').charAt(0).toUpperCase();
-        userAvatarEl.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
-        `;
-      }
-    }
-  }
-
-  async function initializeWorkspace() {
-    let currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
-
-    // Refresh user profile from backend
-    try {
-      if (window.HuddleApi) {
-        const freshUser = await window.HuddleApi.users.getMe();
-        if (freshUser) {
-          currentUser = freshUser;
-          window.HuddleApi.setUser(freshUser);
-        }
-      }
-    } catch {}
-
-    // Update user info across UI
-    if (currentUser) {
-      updateUserUI(currentUser);
-    }
-
-    // Load workspaces
-    try {
-      let workspaces = [];
-      try {
-        workspaces = await window.HuddleApi.workspaces.list();
-      } catch (wsErr) {
-        console.warn('[Huddle] Could not list workspaces:', wsErr);
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchDebounce);
+      const query = searchInput.value.trim();
+      if (!query) {
+        searchResultsPanel.classList.remove('open');
+        searchResultsPanel.innerHTML = '';
+        return;
       }
 
-      let activeWs = null;
-
-      if (!workspaces || workspaces.length === 0) {
-        // Automatically create a personal workspace on initial login
-        const defaultName = currentUser?.fullName
-          ? `${currentUser.fullName.split(' ')[0]}'s Workspace`
-          : 'My Workspace';
-        try {
-          activeWs = await window.HuddleApi.workspaces.create(defaultName);
-          workspaces = [activeWs];
-          // Auto-create initial #general channel
-          try {
-            await window.HuddleApi.channels.create(activeWs.id, 'general', 'public');
-          } catch {}
-        } catch (createErr) {
-          console.error('[Huddle] Failed to auto-create workspace:', createErr);
-        }
-      } else {
-        const savedId = window.HuddleApi.getActiveWorkspaceId();
-        activeWs = workspaces.find((w) => w.id === savedId) || workspaces[0];
-      }
-
-      if (activeWs) {
-        window.HuddleApi.setActiveWorkspaceId(activeWs.id);
-        window.HuddleApi.setActiveWorkspaceName(activeWs.name);
-        renderWorkspaceUI(activeWs, workspaces);
-        await loadWorkspaceChannels(activeWs.id);
-        knownWorkspaceCount = workspaces.length;
-        startBackgroundWorkspaceSync();
-      }
-    } catch (err) {
-      console.error('[Huddle] Error during workspace initialization:', err);
-    }
-  }
-
-  function startBackgroundWorkspaceSync() {
-    if (workspaceSyncInterval) clearInterval(workspaceSyncInterval);
-    workspaceSyncInterval = setInterval(async () => {
-      try {
+      searchDebounce = setTimeout(async () => {
         const activeWsId = window.HuddleApi.getActiveWorkspaceId();
         if (!activeWsId) return;
 
-        // Check if current workspace's channel list has new channels (invited channels appear here)
-        const channels = await window.HuddleApi.channels.list(activeWsId);
-        if (channels && sidebarChannelsList) {
-          const newChannelIds = channels.map((c) => c.id).join(',');
-          if (sidebarChannelsList.dataset.channelIds !== newChannelIds) {
-            sidebarChannelsList.dataset.channelIds = newChannelIds;
-            renderChannelsList(channels);
-          }
-        }
-      } catch {}
-    }, 2000); // Poll every 2s so invited channels appear quickly
-  }
-
-  function renderWorkspaceUI(activeWs) {
-    if (!activeWs) return;
-
-    // Update document title & sidebar triggers
-    document.title = `Huddle — ${activeWs.name}`;
-
-    const triggerNameEl = document.querySelector('.workspace-name-text');
-    if (triggerNameEl) {
-      triggerNameEl.textContent = activeWs.name;
-    }
-
-    const popoverTitleEl = document.querySelector('.popover-workspace-title');
-    if (popoverTitleEl) popoverTitleEl.textContent = activeWs.name;
-
-    // Populate Workspace ID and setup 1-click Copy
-    const wsIdEl = document.getElementById('popover-workspace-id-text');
-    if (wsIdEl) wsIdEl.textContent = activeWs.id || 'N/A';
-
-    const copyBtn = document.getElementById('copy-workspace-id-btn');
-    if (copyBtn) {
-      copyBtn.onclick = async (e) => {
-        e.stopPropagation();
         try {
-          await navigator.clipboard.writeText(activeWs.id);
-          window.showHuddleToast('Workspace ID copied! Share with teammates to join.', 'success');
-        } catch {
-          const temp = document.createElement('input');
-          temp.value = activeWs.id;
-          document.body.appendChild(temp);
-          temp.select();
-          document.execCommand('copy');
-          document.body.removeChild(temp);
-          window.showHuddleToast('Workspace ID copied to clipboard!', 'success');
+          const res = await window.HuddleApi.search.query(activeWsId, query);
+          renderSearchResults(res);
+        } catch (err) {
+          console.warn('[Huddle Search Error]:', err);
         }
-      };
-    }
+      }, 250);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !searchResultsPanel.contains(e.target)) {
+        searchResultsPanel.classList.remove('open');
+      }
+    });
   }
+
+  function renderSearchResults(data) {
+    if (!searchResultsPanel) return;
+    const channels = data?.channels || [];
+    const messages = data?.messages || [];
+
+    if (channels.length === 0 && messages.length === 0) {
+      searchResultsPanel.innerHTML = `
+        <div style="padding:12px;color:#98A2B3;font-size:13px;text-align:center;">
+          No matching channels or messages
+        </div>
+      `;
+      searchResultsPanel.classList.add('open');
+      return;
+    }
+
+    let html = '';
+
+    if (channels.length > 0) {
+      html += `<div class="search-group-title">Channels</div>`;
+      channels.forEach((c) => {
+        html += `
+          <div class="search-result-item" data-channel-id="${escapeHtml(c.id)}">
+            <span style="font-weight:700;color:#98A2B3;">#</span>
+            <span style="font-weight:600;font-size:13px;color:#101828;">${escapeHtml(c.name)}</span>
+          </div>
+        `;
+      });
+    }
+
+    if (messages.length > 0) {
+      html += `<div class="search-group-title">Messages</div>`;
+      messages.forEach((m) => {
+        const sender = m.sender?.full_name || 'Teammate';
+        const chanName = m.channel?.name || 'channel';
+        html += `
+          <div class="search-result-item" data-channel-id="${escapeHtml(m.channel_id || m.channel?.id)}" style="flex-direction:column;align-items:flex-start;gap:2px;">
+            <div style="font-size:11.5px;color:#FF6A00;font-weight:600;">#${escapeHtml(chanName)} • ${escapeHtml(sender)}</div>
+            <div style="font-size:13px;color:#344054;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;">
+              ${escapeHtml(m.content || '')}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    searchResultsPanel.innerHTML = html;
+    searchResultsPanel.classList.add('open');
+
+    searchResultsPanel.querySelectorAll('.search-result-item').forEach((item) => {
+      item.addEventListener('click', async () => {
+        const cId = item.dataset.channelId;
+        searchResultsPanel.classList.remove('open');
+        searchInput.value = '';
+        if (cId) {
+          try {
+            const ch = await window.HuddleApi.channels.get(cId);
+            renderChannelMainView(ch);
+          } catch {}
+        }
+      });
+    });
+  }
+
+  initSearchPanel();
+
+  // ========================================================================
+  // Channels and Workspace UI Synchronization
+  // ========================================================================
+  let currentChannelMembers = [];
 
   async function loadWorkspaceChannels(workspaceId) {
     if (!workspaceId) return;
@@ -995,6 +1128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!sidebarSectionsWrapper || !sidebarChannelsList) return;
 
     const mainArea = document.getElementById('dashboard-main');
+    const currentUser = window.HuddleApi.getUser();
 
     if (!channels || channels.length === 0) {
       sidebarSectionsWrapper.style.display = 'none';
@@ -1030,13 +1164,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     sidebarSectionsWrapper.style.display = 'flex';
     sidebarChannelsList.innerHTML = '';
+    if (sidebarDmsList) sidebarDmsList.innerHTML = '';
+
+    const publicChannels = channels.filter((c) => c.type !== 'dm');
+    const dmChannels = channels.filter((c) => c.type === 'dm');
 
     const activeChannelId = window.HuddleApi.getActiveChannelId();
 
-    channels.forEach((channel, idx) => {
+    // Render Channels
+    publicChannels.forEach((channel, idx) => {
       const li = document.createElement('li');
       li.className = 'sidebar-channel-item';
-      const isSelected = activeChannelId ? channel.id === activeChannelId : idx === 0;
+      li.dataset.channelId = channel.id;
+      const isSelected = activeChannelId ? channel.id === activeChannelId : idx === 0 && dmChannels.length === 0;
 
       if (isSelected) {
         li.classList.add('active');
@@ -1048,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       link.className = 'sidebar-channel-link';
       link.innerHTML = `
         <span class="channel-link-prefix" aria-hidden="true">#</span>
-        <span class="channel-link-name">${escapeHtml(channel.name)}</span>
+        <span class="channel-link-name channel-name-text">${escapeHtml(channel.name)}</span>
       `;
 
       link.addEventListener('click', (e) => {
@@ -1056,8 +1196,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.sidebar-channel-item').forEach((el) => el.classList.remove('active'));
         li.classList.add('active');
         window.HuddleApi.setActiveChannelId(channel.id);
+        clearChannelBadge(channel.id);
         renderChannelMainView(channel);
-        // Close mobile drawer when a channel is selected
         closeMobileDrawer();
       });
 
@@ -1065,24 +1205,79 @@ document.addEventListener('DOMContentLoaded', async () => {
       sidebarChannelsList.appendChild(li);
     });
 
-    const activeChannel = channels.find((c) => c.id === window.HuddleApi.getActiveChannelId()) || channels[0];
-    if (activeChannel) {
-      renderChannelMainView(activeChannel);
+    // Render DMs
+    if (sidebarDmsList) {
+      dmChannels.forEach((dm) => {
+        const otherMember = (dm.members || []).find((m) => m.user_id !== currentUser?.id) || dm.members?.[0];
+        const teammate = otherMember?.user;
+        const displayName = teammate?.full_name || teammate?.username || 'Teammate';
+        const isOnline = teammate?.id && onlineUsersSet.has(teammate.id);
+
+        const li = document.createElement('li');
+        li.className = 'sidebar-channel-item';
+        li.dataset.channelId = dm.id;
+        li.dataset.userId = teammate?.id || '';
+        if (activeChannelId === dm.id) {
+          li.classList.add('active');
+        }
+
+        const link = document.createElement('a');
+        link.href = '#';
+        link.className = 'sidebar-channel-link';
+        link.innerHTML = `
+          <span class="presence-dot ${isOnline ? 'online' : ''}"></span>
+          <span class="channel-link-name channel-name-text">${escapeHtml(displayName)}</span>
+        `;
+
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.querySelectorAll('.sidebar-channel-item').forEach((el) => el.classList.remove('active'));
+          li.classList.add('active');
+          window.HuddleApi.setActiveChannelId(dm.id);
+          clearChannelBadge(dm.id);
+          renderChannelMainView(dm);
+          closeMobileDrawer();
+        });
+
+        li.appendChild(link);
+        sidebarDmsList.appendChild(li);
+      });
+    }
+
+    const currentActive =
+      channels.find((c) => c.id === window.HuddleApi.getActiveChannelId()) || channels[0];
+    if (currentActive) {
+      renderChannelMainView(currentActive);
     }
   }
 
-  let activeMessagePollInterval = null;
+  // ========================================================================
+  // Main Channel Chat View & Real-Time Engine
+  // ========================================================================
+  let currentMessages = [];
 
   async function renderChannelMainView(channel) {
     const mainArea = document.getElementById('dashboard-main');
     if (!mainArea || !channel) return;
 
-    if (activeMessagePollInterval) {
-      clearInterval(activeMessagePollInterval);
-      activeMessagePollInterval = null;
+    activeChannel = channel;
+    const currentUser = window.HuddleApi.getUser();
+
+    // Socket: leave previous, join new channel room
+    if (socket) {
+      socket.emit('channel:join', { channelId: channel.id });
     }
 
-    const currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
+    // Determine channel title & subtitle
+    let channelTitle = `#${channel.name}`;
+    let isDm = channel.type === 'dm';
+    let dmTeammate = null;
+
+    if (isDm) {
+      const otherMember = (channel.members || []).find((m) => m.user_id !== currentUser?.id) || channel.members?.[0];
+      dmTeammate = otherMember?.user;
+      channelTitle = dmTeammate?.full_name || dmTeammate?.username || 'Direct Message';
+    }
 
     mainArea.innerHTML = `
       <div style="display:flex;flex-direction:column;height:100%;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;">
@@ -1092,55 +1287,83 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span style="display:inline-flex;padding:3px 8px;border-radius:6px;background:#FFF4ED;color:#FF6A00;font-size:12px;font-weight:700;">
               ${escapeHtml(window.HuddleApi.getActiveWorkspaceName() || 'Workspace')}
             </span>
-            <span style="font-size:20px;font-weight:700;color:#101828;">#${escapeHtml(channel.name)}</span>
-            <span style="display:inline-flex;padding:2px 8px;border-radius:12px;background:#F2F4F7;color:#344054;font-size:12px;font-weight:600;text-transform:capitalize;">
-              ${escapeHtml(channel.type || 'public')}
-            </span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              ${isDm ? `<span class="presence-dot ${dmTeammate?.id && onlineUsersSet.has(dmTeammate.id) ? 'online' : ''}" style="width:10px;height:10px;"></span>` : ''}
+              <span style="font-size:20px;font-weight:700;color:#101828;">${escapeHtml(channelTitle)}</span>
+            </div>
+            ${channel.topic ? `<span style="font-size:13px;color:#667085;border-left:1px solid #EAECF0;padding-left:8px;">${escapeHtml(channel.topic)}</span>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <button type="button" id="channel-members-count-btn" class="channel-member-pill" title="View channel members">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-              </svg>
-              <span id="channel-members-count-text">Members</span>
-            </button>
-            <button type="button" id="channel-invite-btn" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#FF6A00;color:#ffffff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s ease;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="8.5" cy="7.5" r="4"></circle>
-                <line x1="20" y1="8" x2="20" y2="14"></line>
-                <line x1="23" y1="11" x2="17" y2="11"></line>
-              </svg>
-              <span>+ Add</span>
-            </button>
+            ${
+              !isDm
+                ? `
+                <button type="button" id="channel-members-count-btn" class="channel-member-pill" title="View channel members">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                  <span id="channel-members-count-text">Members</span>
+                  <span id="channel-online-count-badge" style="font-size:11px;color:#12B76A;font-weight:600;margin-left:4px;"></span>
+                </button>
+                <button type="button" id="channel-invite-btn" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#FF6A00;color:#ffffff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s ease;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="8.5" cy="7.5" r="4"></circle>
+                    <line x1="20" y1="8" x2="20" y2="14"></line>
+                    <line x1="23" y1="11" x2="17" y2="11"></line>
+                  </svg>
+                  <span>+ Add</span>
+                </button>
+              `
+                : ''
+            }
           </div>
         </header>
 
         <!-- Channel Chat Messages Area -->
-        <div id="channel-messages-container" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;">
-          <!-- Welcome Message -->
-          <div style="background:#F9FAFB;border:1px solid #EAECF0;border-radius:12px;padding:20px 24px;">
-            <div style="font-size:24px;margin-bottom:6px;">👋</div>
-            <h3 style="font-size:16px;font-weight:700;color:#101828;margin-bottom:4px;">Welcome to #${escapeHtml(channel.name)}!</h3>
-            <p style="font-size:14px;color:#667085;line-height:1.5;">This is the start of the #${escapeHtml(channel.name)} channel. Share messages, files, and collaborate with your workspace teammates.</p>
+        <div id="channel-messages-container" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:12px;">
+          <!-- Welcome Box -->
+          <div style="background:#F9FAFB;border:1px solid #EAECF0;border-radius:12px;padding:18px 22px;margin-bottom:8px;">
+            <div style="font-size:22px;margin-bottom:4px;">${isDm ? '💬' : '👋'}</div>
+            <h3 style="font-size:16px;font-weight:700;color:#101828;margin-bottom:4px;">${escapeHtml(channelTitle)}</h3>
+            <p style="font-size:13.5px;color:#667085;line-height:1.5;">${
+              isDm
+                ? `This is your direct message conversation with ${escapeHtml(channelTitle)}.`
+                : `This is the start of #${escapeHtml(channel.name)}. Share messages and collaborate.`
+            }</p>
           </div>
 
-          <!-- Messages List Stream -->
-          <div id="messages-list" style="display:flex;flex-direction:column;gap:14px;flex:1;">
-            <div style="color:#98A2B3;font-size:13px;text-align:center;padding:12px 0;">Loading messages...</div>
+          <!-- Messages Stream with Skeletons initially -->
+          <div id="messages-list" style="display:flex;flex-direction:column;gap:8px;flex:1;">
+            <div style="display:flex;flex-direction:column;gap:16px;padding:12px 0;">
+              <div style="display:flex;gap:12px;align-items:center;">
+                <div class="skeleton-box" style="width:36px;height:36px;border-radius:50%;"></div>
+                <div style="display:flex;flex-direction:column;gap:6px;flex:1;">
+                  <div class="skeleton-box" style="width:120px;height:12px;"></div>
+                  <div class="skeleton-box" style="width:70%;height:14px;"></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;align-items:center;">
+                <div class="skeleton-box" style="width:36px;height:36px;border-radius:50%;"></div>
+                <div style="display:flex;flex-direction:column;gap:6px;flex:1;">
+                  <div class="skeleton-box" style="width:140px;height:12px;"></div>
+                  <div class="skeleton-box" style="width:85%;height:14px;"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Chat Input Bar -->
-        <div style="padding:16px 24px 20px;border-top:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
+        <!-- Composer Area with Typing Indicator -->
+        <div style="padding:10px 24px 20px;border-top:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
+          <div id="typing-indicator-bar" class="typing-bar"></div>
           <form id="channel-chat-form" style="display:flex;align-items:center;gap:10px;background:#F9FAFB;border:1px solid #D0D5DD;border-radius:12px;padding:8px 12px;transition:border-color 0.15s ease;">
             <input
               type="text"
               id="channel-chat-input"
-              placeholder="Message #${escapeHtml(channel.name)}..."
+              placeholder="${isDm ? `Message ${escapeHtml(channelTitle)}...` : `Message #${escapeHtml(channel.name)}...`}"
               autocomplete="off"
               style="flex:1;border:none;background:transparent;outline:none;font-size:14px;color:#101828;padding:4px 6px;"
             />
@@ -1175,11 +1398,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function loadChannelMembers() {
+      if (isDm) return [];
       try {
         const members = await window.HuddleApi.channels.getMembers(channel.id);
+        currentChannelMembers = members || [];
         if (membersCountText && Array.isArray(members)) {
           membersCountText.textContent = `${members.length} Member${members.length === 1 ? '' : 's'}`;
         }
+        updateAllPresenceDots();
         return members;
       } catch {
         return [];
@@ -1190,111 +1416,36 @@ document.addEventListener('DOMContentLoaded', async () => {
       membersCountBtn.addEventListener('click', async () => {
         const members = await loadChannelMembers();
         if (!members || members.length === 0) return;
-        const membersListStr = members.map((m) => `• ${m.fullName || 'Member'} (@${m.username || 'user'})`).join('\n');
+        const membersListStr = members
+          .map((m) => {
+            const isOnline = onlineUsersSet.has(m.userId || m.id);
+            return `• ${m.fullName || 'Member'} (@${m.username || 'user'}) — ${isOnline ? '🟢 Online' : '⚪ Offline'}`;
+          })
+          .join('\n');
         showActionDialog(`Channel Members (${members.length})`, membersListStr);
       });
     }
 
     loadChannelMembers();
 
-    let isFetching = false;
-    let lastRenderedMessagesKey = '';
-
-    async function loadMessages() {
-      if (isFetching) return;
-      isFetching = true;
-      try {
-        const res = await window.HuddleApi.messages.list(channel.id);
-        const list = res?.data?.messages || res?.messages || res?.data || (Array.isArray(res) ? res : []);
-        const key = list.map((m) => `${m.id}_${m.content || ''}_${m.created_at || m.createdAt}`).join('|');
-        if (key !== lastRenderedMessagesKey) {
-          lastRenderedMessagesKey = key;
-          renderMessages(list);
+    // Typing emission listener
+    if (chatInput) {
+      chatInput.addEventListener('input', () => {
+        if (!isTypingSelf && socket) {
+          socket.emit('typing:start', { channelId: channel.id });
+          isTypingSelf = true;
         }
-      } catch (err) {
-        console.error('Failed to load messages:', err);
-      } finally {
-        isFetching = false;
-      }
+        clearTimeout(typingSelfTimeout);
+        typingSelfTimeout = setTimeout(() => {
+          if (isTypingSelf && socket) {
+            socket.emit('typing:stop', { channelId: channel.id });
+            isTypingSelf = false;
+          }
+        }, 2000);
+      });
     }
 
-    function renderMessages(messages) {
-      if (!messagesList) return;
-      if (!messages || messages.length === 0) {
-        messagesList.innerHTML = `
-          <div style="color:#98A2B3;font-size:13px;text-align:center;padding:24px 0;">
-            No messages yet. Say hello to get the conversation started!
-          </div>
-        `;
-        return;
-      }
-
-      const sorted = [...messages].sort((a, b) => new Date(a.created_at || a.createdAt || 0) - new Date(b.created_at || b.createdAt || 0));
-
-      messagesList.innerHTML = sorted.map((msg) => {
-        const timeStr = msg.created_at ? formatMessageTime(msg.created_at) : '';
-
-        // Slack-style system announcement for member additions
-        if (msg.content && msg.content.includes('was added to #')) {
-          return `
-            <div class="system-announcement-msg">
-              <span class="announcement-icon" aria-hidden="true">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="8.5" cy="7.5" r="4"></circle>
-                  <line x1="20" y1="8" x2="20" y2="14"></line>
-                  <line x1="23" y1="11" x2="17" y2="11"></line>
-                </svg>
-              </span>
-              <span>${escapeHtml(msg.content)}</span>
-              <span style="font-size:11px;color:#98A2B3;margin-left:4px;">${escapeHtml(timeStr)}</span>
-            </div>
-          `;
-        }
-
-        const isMe = currentUser && (msg.sender_id === currentUser.id || msg.senderId === currentUser.id || msg.sender?.id === currentUser.id);
-        const senderName = msg.sender?.full_name || msg.sender?.fullName || (isMe ? (currentUser.fullName || 'You') : 'Teammate');
-        const senderUsername = msg.sender?.username || (isMe ? (currentUser.username || 'you') : '');
-        const initial = senderName.charAt(0).toUpperCase();
-        const avatarUrl = msg.sender?.avatar_url || msg.sender?.avatarUrl || (isMe ? currentUser.avatarUrl : null);
-
-        const avatarInnerHtml = avatarUrl
-          ? `<img src="${escapeHtml(avatarUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;" />`
-          : escapeHtml(initial);
-
-        return `
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:8px 10px;border-radius:10px;">
-            <div style="width:36px;height:36px;border-radius:50%;background:${isMe ? '#FF6A00' : '#475467'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;overflow:hidden;">
-              ${avatarInnerHtml}
-            </div>
-            <div style="flex:1;">
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
-                <span style="font-weight:700;font-size:14px;color:#101828;">${escapeHtml(senderName)}</span>
-                ${senderUsername ? `<span style="font-size:12px;font-weight:600;color:#FF6A00;">@${escapeHtml(senderUsername)}</span>` : ''}
-                <span style="font-size:11.5px;color:#98A2B3;margin-left:4px;">${escapeHtml(timeStr)}</span>
-              </div>
-              <div style="font-size:14px;color:#344054;line-height:1.5;word-break:break-word;">
-                ${escapeHtml(msg.content || '')}
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      if (messagesContainer) {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      }
-    }
-
-    function formatMessageTime(dateString) {
-      try {
-        const d = new Date(dateString);
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      } catch {
-        return '';
-      }
-    }
-
+    // Chat submit
     if (chatForm && chatInput) {
       chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1303,116 +1454,619 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         chatInput.value = '';
 
+        if (isTypingSelf && socket) {
+          socket.emit('typing:stop', { channelId: channel.id });
+          isTypingSelf = false;
+        }
+
         try {
           await window.HuddleApi.messages.send(channel.id, text);
-          lastRenderedMessagesKey = '';
-          await loadMessages();
+          // Socket broadcast will append the message smoothly
         } catch (err) {
           console.error('Failed to send message:', err);
-          window.showHuddleToast(err.message || 'Failed to send message. Please try again.', 'error');
+          window.showHuddleToast(err.message || 'Failed to send message.', 'error');
         }
       });
     }
 
-    await loadMessages();
-    activeMessagePollInterval = setInterval(loadMessages, 1500);
+    // Fetch initial messages once
+    try {
+      const res = await window.HuddleApi.messages.list(channel.id, 60);
+      const list = res?.data?.messages || res?.messages || res?.data || (Array.isArray(res) ? res : []);
+      currentMessages = list;
+      renderMessagesFeed(currentMessages);
+
+      if (list.length > 0) {
+        const lastMsg = list[list.length - 1];
+        if (lastMsg && lastMsg.id) {
+          window.HuddleApi.messages.markRead(channel.id, lastMsg.id).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+      if (messagesList) {
+        messagesList.innerHTML = `<div style="color:#F04438;text-align:center;padding:20px;">Could not load messages.</div>`;
+      }
+    }
   }
 
-  function openInviteModal() {
-    let modal = document.getElementById('invite-member-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'invite-member-modal';
-      modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(16, 24, 40, 0.5);
-        backdrop-filter: blur(4px);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-      `;
-      modal.innerHTML = `
-        <div style="background:#ffffff;border-radius:16px;max-width:440px;width:100%;padding:28px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);position:relative;">
-          <button type="button" id="close-invite-modal" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#98A2B3;cursor:pointer;padding:4px;" aria-label="Close modal">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-          <div style="width:48px;height:48px;border-radius:12px;background:#FFF4ED;color:#FF6A00;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7.5" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-          </div>
-          <h3 style="font-size:20px;font-weight:700;color:#101828;margin-bottom:6px;">Invite Teammates</h3>
-          <p style="font-size:14px;color:#667085;margin-bottom:20px;line-height:1.4;">Enter their email address to invite them to this workspace.</p>
-          <form id="send-invite-form" style="display:flex;flex-direction:column;gap:14px;">
-            <div>
-              <label for="invite-email-input" style="display:block;font-size:13px;font-weight:600;color:#344054;margin-bottom:6px;">Email address</label>
-              <input
-                type="email"
-                id="invite-email-input"
-                placeholder="colleague@company.com"
-                required
-                style="width:100%;height:46px;padding:0 14px;border:1.5px solid #D0D5DD;border-radius:10px;font-size:14px;font-family:inherit;outline:none;"
-              />
-            </div>
-            <div style="display:flex;gap:10px;margin-top:8px;">
-              <button type="button" id="cancel-invite-btn" style="flex:1;height:44px;border:1px solid #D0D5DD;background:#fff;color:#344054;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">Cancel</button>
-              <button type="submit" id="submit-invite-btn" style="flex:1;height:44px;border:none;background:#FF6A00;color:#fff;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">Send Invite</button>
-            </div>
-          </form>
+  // --- Render Messages Stream (with Grouping, Date Dividers, Reactions & Hover Toolbars) ---
+  function renderMessagesFeed(messages) {
+    const messagesList = document.getElementById('messages-list');
+    const messagesContainer = document.getElementById('channel-messages-container');
+    if (!messagesList) return;
+
+    if (!messages || messages.length === 0) {
+      messagesList.innerHTML = `
+        <div style="color:#98A2B3;font-size:13.5px;text-align:center;padding:28px 0;">
+          No messages yet. Say hello to get the conversation started!
         </div>
       `;
-      document.body.appendChild(modal);
+      return;
+    }
 
-      modal.querySelector('#close-invite-modal').addEventListener('click', () => {
-        modal.style.display = 'none';
-      });
-      modal.querySelector('#cancel-invite-btn').addEventListener('click', () => {
-        modal.style.display = 'none';
-      });
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.style.display = 'none';
-      });
+    const sorted = [...messages].sort(
+      (a, b) => new Date(a.created_at || a.createdAt || 0) - new Date(b.created_at || b.createdAt || 0),
+    );
 
-      modal.querySelector('#send-invite-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const emailInput = modal.querySelector('#invite-email-input');
-        const submitBtn = modal.querySelector('#submit-invite-btn');
-        const email = emailInput?.value.trim();
-        if (!email) return;
+    const currentUser = window.HuddleApi.getUser();
+    let lastDateStr = null;
+    let lastSenderId = null;
+    let lastTimestamp = 0;
+    let html = '';
 
-        const activeWsId = window.HuddleApi.getActiveWorkspaceId();
-        if (!activeWsId) {
-          window.showHuddleToast('No active workspace selected', 'error');
-          return;
+    sorted.forEach((msg) => {
+      const msgDate = new Date(msg.created_at || msg.createdAt || Date.now());
+      const dateHeader = formatDateDivider(msgDate);
+
+      // Date Separator Divider
+      if (dateHeader !== lastDateStr) {
+        lastDateStr = dateHeader;
+        html += `
+          <div class="chat-date-divider">
+            <span class="chat-date-divider-text">${escapeHtml(dateHeader)}</span>
+          </div>
+        `;
+        lastSenderId = null; // Reset grouping across date breaks
+      }
+
+      // Check message grouping (within 5 minutes by same sender)
+      const isSameSender = lastSenderId && lastSenderId === (msg.sender_id || msg.senderId || msg.sender?.id);
+      const isWithin5Min = Math.abs(msgDate.getTime() - lastTimestamp) < 5 * 60 * 1000;
+      const isGrouped = isSameSender && isWithin5Min && !msg.is_deleted;
+
+      lastSenderId = msg.sender_id || msg.senderId || msg.sender?.id;
+      lastTimestamp = msgDate.getTime();
+
+      html += renderSingleMessageHtml(msg, isGrouped, currentUser);
+    });
+
+    messagesList.innerHTML = html;
+
+    attachMessageActionListeners();
+
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  }
+
+  function formatDateDivider(date) {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString(undefined, {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      });
+    }
+  }
+
+  function renderSingleMessageHtml(msg, isGrouped, currentUser) {
+    const isMe =
+      currentUser &&
+      (msg.sender_id === currentUser.id || msg.senderId === currentUser.id || msg.sender?.id === currentUser.id);
+    const senderName = msg.sender?.full_name || msg.sender?.fullName || (isMe ? (currentUser.fullName || 'You') : 'Teammate');
+    const senderUsername = msg.sender?.username || (isMe ? (currentUser.username || 'you') : '');
+    const timeStr = formatTime(msg.created_at || msg.createdAt);
+    const isDeleted = Boolean(msg.is_deleted);
+    const isEdited = Boolean(msg.is_edited);
+
+    const initial = senderName.charAt(0).toUpperCase();
+    const avatarUrl = msg.sender?.avatar_url || msg.sender?.avatarUrl || (isMe ? currentUser.avatarUrl : null);
+
+    const avatarHtml = avatarUrl
+      ? `<img src="${escapeHtml(avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
+      : escapeHtml(initial);
+
+    // Grouped Reactions aggregation
+    const reactionMap = new Map(); // emoji -> { count, hasReacted }
+    (msg.reactions || []).forEach((r) => {
+      const entry = reactionMap.get(r.emoji) || { count: 0, hasReacted: false };
+      entry.count += 1;
+      if (currentUser && (r.user_id === currentUser.id || r.user?.id === currentUser.id)) {
+        entry.hasReacted = true;
+      }
+      reactionMap.set(r.emoji, entry);
+    });
+
+    let reactionsHtml = '';
+    if (reactionMap.size > 0 && !isDeleted) {
+      reactionsHtml = `<div class="message-reactions-row">`;
+      reactionMap.forEach((data, emoji) => {
+        reactionsHtml += `
+          <button type="button" class="reaction-chip ${data.hasReacted ? 'active' : ''}" data-msg-id="${escapeHtml(msg.id)}" data-emoji="${escapeHtml(emoji)}" title="${data.hasReacted ? 'Remove reaction' : 'React'}">
+            <span>${escapeHtml(emoji)}</span>
+            <span>${data.count}</span>
+          </button>
+        `;
+      });
+      reactionsHtml += `</div>`;
+    }
+
+    return `
+      <div class="message-row ${isGrouped ? 'is-grouped' : ''}" id="msg-row-${escapeHtml(msg.id)}" data-message-id="${escapeHtml(msg.id)}">
+        <!-- Hover action toolbar -->
+        ${
+          !isDeleted
+            ? `
+          <div class="message-actions-toolbar">
+            <button type="button" class="message-action-btn quick-react-btn" data-emoji="👍" title="React 👍">👍</button>
+            <button type="button" class="message-action-btn quick-react-btn" data-emoji="❤️" title="React ❤️">❤️</button>
+            <button type="button" class="message-action-btn quick-react-btn" data-emoji="😂" title="React 😂">😂</button>
+            <button type="button" class="message-action-btn quick-react-btn" data-emoji="🚀" title="React 🚀">🚀</button>
+            <button type="button" class="message-action-btn quick-react-btn" data-emoji="🔥" title="React 🔥">🔥</button>
+            ${
+              isMe
+                ? `
+              <button type="button" class="message-action-btn edit-msg-btn" title="Edit message">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <button type="button" class="message-action-btn delete-msg-btn" title="Delete message">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F04438" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            `
+                : ''
+            }
+          </div>
+        `
+            : ''
         }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Sending...';
+        <!-- Avatar Column -->
+        <div class="message-avatar-col" style="width:36px;height:36px;border-radius:50%;background:${isMe ? '#FF6A00' : '#475467'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;overflow:hidden;">
+          ${avatarHtml}
+        </div>
+
+        <!-- Content Column -->
+        <div style="flex:1;min-width:0;">
+          ${
+            !isGrouped
+              ? `
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap;">
+              <span style="font-weight:700;font-size:14px;color:#101828;">${escapeHtml(senderName)}</span>
+              ${senderUsername ? `<span style="font-size:12px;font-weight:600;color:#FF6A00;">@${escapeHtml(senderUsername)}</span>` : ''}
+              <span style="font-size:11.5px;color:#98A2B3;margin-left:4px;">${escapeHtml(timeStr)}</span>
+              ${isEdited && !isDeleted ? `<span style="font-size:11px;color:#98A2B3;font-style:italic;">(edited)</span>` : ''}
+            </div>
+          `
+              : ''
+          }
+
+          <div class="message-body-content" id="msg-body-${escapeHtml(msg.id)}" style="font-size:14px;color:${isDeleted ? '#98A2B3' : '#344054'};line-height:1.5;word-break:break-word;font-style:${isDeleted ? 'italic' : 'normal'};">
+            ${isDeleted ? 'This message was deleted' : escapeHtml(msg.content || '')}
+          </div>
+
+          ${reactionsHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  function formatTime(val) {
+    try {
+      const d = new Date(val);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  }
+
+  // --- Attach Handlers for Reactions, Edits, and Deletes ---
+  function attachMessageActionListeners() {
+    // Quick Reaction buttons
+    document.querySelectorAll('.quick-react-btn').forEach((btn) => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        const row = btn.closest('.message-row');
+        const msgId = row?.dataset.messageId;
+        const emoji = btn.dataset.emoji;
+        if (!activeChannel || !msgId || !emoji) return;
 
         try {
-          await window.HuddleApi.invites.send(activeWsId, email);
-          window.showHuddleToast(`Invite sent successfully to ${email}!`, 'success');
-          modal.style.display = 'none';
-          emailInput.value = '';
+          await window.HuddleApi.messages.toggleReaction(activeChannel.id, msgId, emoji);
         } catch (err) {
-          window.showHuddleToast(err.message || 'Failed to send invite.', 'error');
-        } finally {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Send Invite';
+          window.showHuddleToast(err.message || 'Could not react.', 'error');
         }
-      });
+      };
+    });
+
+    // Reaction Chips toggle
+    document.querySelectorAll('.reaction-chip').forEach((chip) => {
+      chip.onclick = async (e) => {
+        e.stopPropagation();
+        const msgId = chip.dataset.msgId;
+        const emoji = chip.dataset.emoji;
+        if (!activeChannel || !msgId || !emoji) return;
+
+        try {
+          await window.HuddleApi.messages.toggleReaction(activeChannel.id, msgId, emoji);
+        } catch (err) {
+          window.showHuddleToast(err.message || 'Could not toggle reaction.', 'error');
+        }
+      };
+    });
+
+    // Edit message button
+    document.querySelectorAll('.edit-msg-btn').forEach((btn) => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const row = btn.closest('.message-row');
+        const msgId = row?.dataset.messageId;
+        if (!msgId || !activeChannel) return;
+
+        const bodyEl = document.getElementById(`msg-body-${msgId}`);
+        if (!bodyEl || bodyEl.querySelector('input')) return;
+
+        const currentText = bodyEl.textContent.trim();
+
+        bodyEl.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+            <input type="text" id="edit-input-${msgId}" value="${escapeHtml(currentText)}" style="width:100%;padding:6px 10px;border:1.5px solid #FF6A00;border-radius:8px;font-size:14px;outline:none;" />
+            <div style="display:flex;gap:6px;">
+              <button type="button" id="save-edit-${msgId}" style="background:#FF6A00;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>
+              <button type="button" id="cancel-edit-${msgId}" style="background:#F2F4F7;color:#344054;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;">Cancel</button>
+            </div>
+          </div>
+        `;
+
+        const editInput = document.getElementById(`edit-input-${msgId}`);
+        editInput?.focus();
+
+        document.getElementById(`cancel-edit-${msgId}`).onclick = () => {
+          bodyEl.innerHTML = escapeHtml(currentText);
+        };
+
+        const saveAction = async () => {
+          const newText = editInput.value.trim();
+          if (!newText || newText === currentText) {
+            bodyEl.innerHTML = escapeHtml(currentText);
+            return;
+          }
+          try {
+            await window.HuddleApi.messages.update(activeChannel.id, msgId, newText);
+          } catch (err) {
+            window.showHuddleToast(err.message || 'Failed to edit message', 'error');
+            bodyEl.innerHTML = escapeHtml(currentText);
+          }
+        };
+
+        document.getElementById(`save-edit-${msgId}`).onclick = saveAction;
+        editInput.onkeydown = (ev) => {
+          if (ev.key === 'Enter') saveAction();
+          if (ev.key === 'Escape') bodyEl.innerHTML = escapeHtml(currentText);
+        };
+      };
+    });
+
+    // Delete message button
+    document.querySelectorAll('.delete-msg-btn').forEach((btn) => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        const row = btn.closest('.message-row');
+        const msgId = row?.dataset.messageId;
+        if (!msgId || !activeChannel) return;
+
+        if (!confirm('Are you sure you want to delete this message?')) return;
+
+        try {
+          await window.HuddleApi.messages.delete(activeChannel.id, msgId);
+        } catch (err) {
+          window.showHuddleToast(err.message || 'Failed to delete message', 'error');
+        }
+      };
+    });
+  }
+
+  // --- Real-Time Socket Event Handlers ---
+  function handleIncomingMessage(message) {
+    if (!message) return;
+    const exists = currentMessages.some((m) => m.id === message.id);
+    if (!exists) {
+      currentMessages.push(message);
+      renderMessagesFeed(currentMessages);
+    }
+  }
+
+  function handleMessageUpdated(message) {
+    if (!message) return;
+    const idx = currentMessages.findIndex((m) => m.id === message.id);
+    if (idx !== -1) {
+      currentMessages[idx] = message;
+      renderMessagesFeed(currentMessages);
+    }
+  }
+
+  function handleMessageDeleted(messageId) {
+    const idx = currentMessages.findIndex((m) => m.id === messageId);
+    if (idx !== -1) {
+      currentMessages[idx].is_deleted = true;
+      currentMessages[idx].content = null;
+      renderMessagesFeed(currentMessages);
+    }
+  }
+
+  function handleReactionsUpdated(messageId, reactions) {
+    const msg = currentMessages.find((m) => m.id === messageId);
+    if (msg) {
+      msg.reactions = reactions;
+      renderMessagesFeed(currentMessages);
+    }
+  }
+
+  function showTypingIndicator(userId) {
+    const currentUser = window.HuddleApi.getUser();
+    if (currentUser && userId === currentUser.id) return;
+
+    const typerMember = currentChannelMembers.find((m) => (m.userId || m.id) === userId);
+    const typerName = typerMember?.fullName || typerMember?.username || 'Someone';
+
+    const bar = document.getElementById('typing-indicator-bar');
+    if (!bar) return;
+
+    clearTimeout(typingUsersMap.get(userId));
+    typingUsersMap.set(
+      userId,
+      setTimeout(() => {
+        hideTypingIndicator(userId);
+      }, 3500),
+    );
+
+    bar.innerHTML = `
+      <div class="typing-dots">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>
+      <span>${escapeHtml(typerName)} is typing...</span>
+    `;
+  }
+
+  function hideTypingIndicator(userId) {
+    typingUsersMap.delete(userId);
+    const bar = document.getElementById('typing-indicator-bar');
+    if (!bar) return;
+
+    if (typingUsersMap.size === 0) {
+      bar.innerHTML = '';
+    }
+  }
+
+  // ========================================================================
+  // Workspace UI and Initial Load
+  // ========================================================================
+  function updateUserUI(user) {
+    if (!user) return;
+
+    const avatarInitial = (user.fullName || 'U').charAt(0).toUpperCase();
+
+    // 1. Sidebar bottom avatar & names
+    const sidebarAvatarEl = document.getElementById('sidebar-user-avatar');
+    const sidebarNameEl = document.getElementById('sidebar-user-name');
+    const sidebarRoleEl = document.getElementById('sidebar-user-role');
+
+    if (sidebarAvatarEl) {
+      if (user.avatarUrl && user.avatarUrl.trim().length > 0) {
+        sidebarAvatarEl.innerHTML = `<img src="${escapeHtml(user.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
+      } else {
+        sidebarAvatarEl.innerHTML = escapeHtml(avatarInitial);
+      }
     }
 
-    modal.style.display = 'flex';
-    const emailInput = modal.querySelector('#invite-email-input');
-    if (emailInput) {
-      emailInput.value = '';
-      emailInput.focus();
+    if (sidebarNameEl) sidebarNameEl.textContent = user.fullName || 'User';
+    if (sidebarRoleEl) sidebarRoleEl.textContent = `@${user.username || 'username'}`;
+
+    // 2. Mobile top bar avatar
+    const mobileAvatarEl = document.querySelector('.mobile-avatar');
+    if (mobileAvatarEl) {
+      mobileAvatarEl.title = user.fullName || 'User';
+      if (user.avatarUrl && user.avatarUrl.trim().length > 0) {
+        mobileAvatarEl.innerHTML = `<img src="${escapeHtml(user.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
+      } else {
+        mobileAvatarEl.innerHTML = escapeHtml(avatarInitial);
+      }
     }
+  }
+
+  async function initializeWorkspace() {
+    let currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
+
+    try {
+      if (window.HuddleApi) {
+        const freshUser = await window.HuddleApi.users.getMe();
+        if (freshUser) {
+          currentUser = freshUser;
+          window.HuddleApi.setUser(freshUser);
+        }
+      }
+    } catch {}
+
+    if (currentUser) {
+      updateUserUI(currentUser);
+    }
+
+    // Initialize WebSockets
+    initWebSocket();
+
+    // Load workspaces
+    try {
+      let workspaces = [];
+      try {
+        workspaces = await window.HuddleApi.workspaces.list();
+      } catch (wsErr) {
+        console.warn('[Huddle] Could not list workspaces:', wsErr);
+      }
+
+      let activeWs = null;
+
+      if (!workspaces || workspaces.length === 0) {
+        const defaultName = currentUser?.fullName
+          ? `${currentUser.fullName.split(' ')[0]}'s Workspace`
+          : 'My Workspace';
+        try {
+          activeWs = await window.HuddleApi.workspaces.create(defaultName);
+          workspaces = [activeWs];
+          try {
+            await window.HuddleApi.channels.create(activeWs.id, 'general', 'public');
+          } catch {}
+        } catch (createErr) {
+          console.error('[Huddle] Failed to auto-create workspace:', createErr);
+        }
+      } else {
+        const savedId = window.HuddleApi.getActiveWorkspaceId();
+        activeWs = workspaces.find((w) => w.id === savedId) || workspaces[0];
+      }
+
+      if (activeWs) {
+        window.HuddleApi.setActiveWorkspaceId(activeWs.id);
+        window.HuddleApi.setActiveWorkspaceName(activeWs.name);
+        renderWorkspaceUI(activeWs, workspaces);
+        await loadWorkspaceChannels(activeWs.id);
+        startBackgroundWorkspaceSync();
+      }
+    } catch (err) {
+      console.error('[Huddle] Error during workspace initialization:', err);
+    }
+  }
+
+  function startBackgroundWorkspaceSync() {
+    if (workspaceSyncInterval) clearInterval(workspaceSyncInterval);
+    workspaceSyncInterval = setInterval(async () => {
+      try {
+        const activeWsId = window.HuddleApi.getActiveWorkspaceId();
+        if (!activeWsId) return;
+
+        const channels = await window.HuddleApi.channels.list(activeWsId);
+        if (channels && sidebarChannelsList) {
+          const newChannelIds = channels.map((c) => c.id).join(',');
+          if (sidebarChannelsList.dataset.channelIds !== newChannelIds) {
+            sidebarChannelsList.dataset.channelIds = newChannelIds;
+            renderChannelsList(channels);
+          }
+        }
+      } catch {}
+    }, 4000); // 4s sync check for workspace channel list
+  }
+
+  function renderWorkspaceUI(activeWs) {
+    if (!activeWs) return;
+
+    document.title = `Huddle — ${activeWs.name}`;
+
+    const triggerNameEl = document.querySelector('.workspace-name-text');
+    if (triggerNameEl) triggerNameEl.textContent = activeWs.name;
+
+    const popoverTitleEl = document.querySelector('.popover-workspace-title');
+    if (popoverTitleEl) popoverTitleEl.textContent = activeWs.name;
+
+    const wsIdEl = document.getElementById('popover-workspace-id-text');
+    if (wsIdEl) wsIdEl.textContent = activeWs.id || 'N/A';
+
+    const copyBtn = document.getElementById('copy-workspace-id-btn');
+    if (copyBtn) {
+      copyBtn.onclick = async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(activeWs.id);
+          window.showHuddleToast('Workspace ID copied to clipboard!', 'success');
+        } catch {
+          const temp = document.createElement('input');
+          temp.value = activeWs.id;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand('copy');
+          document.body.removeChild(temp);
+          window.showHuddleToast('Workspace ID copied to clipboard!', 'success');
+        }
+      };
+    }
+  }
+
+  // --- Mobile Drawer Helpers ---
+  function openMobileDrawer() {
+    if (!sidebar) return;
+    sidebar.classList.add('mobile-open');
+    if (drawerBackdrop) drawerBackdrop.classList.add('mobile-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMobileDrawer() {
+    if (!sidebar) return;
+    sidebar.classList.remove('mobile-open');
+    if (drawerBackdrop) drawerBackdrop.classList.remove('mobile-open');
+    document.body.style.overflow = '';
+  }
+
+  if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileDrawer);
+  if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeMobileDrawer);
+  if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeMobileDrawer);
+
+  // --- Logout ---
+  if (sidebarLogoutBtn) {
+    sidebarLogoutBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        if (socket) socket.disconnect();
+        await window.HuddleApi.auth.logout();
+      } catch {}
+      window.HuddleApi.clearSession();
+      window.location.href = 'signin.html';
+    });
+  }
+
+  // --- Action Dialog Helper ---
+  function showActionDialog(title, message) {
+    if (!actionDialog || !dialogTitle || !dialogMessage) return;
+    dialogTitle.textContent = title;
+    dialogMessage.textContent = message;
+    actionDialog.classList.add('open');
+    actionDialog.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeActionDialog() {
+    if (!actionDialog) return;
+    actionDialog.classList.remove('open');
+    actionDialog.setAttribute('aria-hidden', 'true');
+  }
+
+  if (dialogCloseBtn) dialogCloseBtn.addEventListener('click', closeActionDialog);
+  if (actionDialog) {
+    actionDialog.addEventListener('click', (e) => {
+      if (e.target === actionDialog) closeActionDialog();
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str && str !== 0) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
   }
 
   // Initial Load

@@ -14,8 +14,16 @@ import { UserStatus } from '../users/entities/user.entity.js';
 import { RefreshToken } from './entities/refresh-token.entity.js';
 import { PasswordResetToken } from './entities/password-reset-token.entity.js';
 
+import { MailService } from '../mail/mail.service.js';
+
 describe('AuthService', () => {
   let service: AuthService;
+
+  const mockMailService = {
+    sendMail: vi.fn().mockResolvedValue(undefined),
+    sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+    sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
+  };
 
   const mockUsersService = {
     findByEmail: vi.fn(),
@@ -36,6 +44,11 @@ describe('AuthService', () => {
     save: vi.fn(),
     findOne: vi.fn(),
     update: vi.fn(),
+    createQueryBuilder: vi.fn().mockReturnValue({
+      delete: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      execute: vi.fn().mockResolvedValue({ affected: 0 }),
+    }),
   };
 
   const mockPasswordResetTokenRepository = {
@@ -53,6 +66,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: UsersService, useValue: mockUsersService },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: MailService, useValue: mockMailService },
         {
           provide: getRepositoryToken(RefreshToken),
           useValue: mockRefreshTokenRepository,

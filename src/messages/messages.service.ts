@@ -1,18 +1,22 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Repository } from 'typeorm';
 import { Message } from './entities/message.entity.js';
 import { Attachment } from './entities/attachment.entity.js';
+import { MessageReaction } from './entities/message-reaction.entity.js';
 import { Channel, ChannelType } from '../channels/entities/channel.entity.js';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
 import { UpdateMessageDto } from './dto/update-message.dto.js';
 import { QueryMessagesDto } from './dto/query-messages.dto.js';
+import { ChatGateway } from '../gateway/chat.gateway.js';
 
 @Injectable()
 export class MessagesService {
@@ -21,10 +25,14 @@ export class MessagesService {
     private readonly messageRepository: Repository<Message>,
     @InjectRepository(Attachment)
     private readonly attachmentRepository: Repository<Attachment>,
+    @InjectRepository(MessageReaction)
+    private readonly reactionRepository: Repository<MessageReaction>,
     @InjectRepository(Channel)
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
     private readonly memberRepository: Repository<ChannelMember>,
+    @Inject(forwardRef(() => ChatGateway))
+    private readonly chatGateway: ChatGateway,
   ) {}
 
   async create(
@@ -129,10 +137,21 @@ export class MessagesService {
 
     const fullMessage = await this.messageRepository.findOne({
       where: { id: savedMessage.id },
-      relations: { attachments: true, sender: true },
+      relations: {
+        attachments: true,
+        sender: true,
+        reactions: { user: true },
+      },
     });
 
-    return fullMessage || savedMessage;
+    const result = fullMessage || savedMessage;
+    // Broadcast real-time message creation via WebSocket
+    this.chatGateway.broadcastToChannel(channelId, 'message:new', {
+      message: result,
+      channelId,
+    });
+
+    return result;
   }
 
   async findAll(
@@ -169,6 +188,8 @@ export class MessagesService {
       .createQueryBuilder('message')
       .leftJoinAndSelect('message.attachments', 'attachment')
       .leftJoinAndSelect('message.sender', 'sender')
+      .leftJoinAndSelect('message.reactions', 'reaction')
+      .leftJoinAndSelect('reaction.user', 'reactionUser')
       .where('message.channel_id = :channelId', { channelId });
 
     if (query.replyToMessageId) {
@@ -265,7 +286,25 @@ export class MessagesService {
     message.content = dto.content.trim();
     message.is_edited = true;
 
-    return this.messageRepository.save(message);
+    const saved = await this.messageRepository.save(message);
+
+    const fullUpdated = await this.messageRepository.findOne({
+      where: { id: saved.id },
+      relations: {
+        attachments: true,
+        sender: true,
+        reactions: { user: true },
+      },
+    });
+
+    const result = fullUpdated || saved;
+    // Broadcast update via WebSocket
+    this.chatGateway.broadcastToChannel(channelId, 'message:updated', {
+      message: result,
+      channelId,
+    });
+
+    return result;
   }
 
   async remove(
@@ -292,10 +331,60 @@ export class MessagesService {
       await this.messageRepository.save(message);
     }
 
+    // Broadcast deletion via WebSocket
+    this.chatGateway.broadcastToChannel(channelId, 'message:deleted', {
+      messageId,
+      channelId,
+    });
+
     return {
       success: true,
       message: 'Message deleted successfully',
     };
+  }
+
+  async toggleReaction(
+    channelId: string,
+    messageId: string,
+    userId: string,
+    emoji: string,
+  ): Promise<{ success: boolean; reactions: MessageReaction[] }> {
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId, channel_id: channelId },
+    });
+
+    if (!message) {
+      throw new NotFoundException(`Message with ID ${messageId} not found`);
+    }
+
+    const existing = await this.reactionRepository.findOne({
+      where: { message_id: messageId, user_id: userId, emoji },
+    });
+
+    if (existing) {
+      await this.reactionRepository.remove(existing);
+    } else {
+      const reaction = this.reactionRepository.create({
+        message_id: messageId,
+        user_id: userId,
+        emoji,
+      });
+      await this.reactionRepository.save(reaction);
+    }
+
+    const reactions = await this.reactionRepository.find({
+      where: { message_id: messageId },
+      relations: { user: true },
+    });
+
+    // Broadcast real-time reaction update to all clients in this channel
+    this.chatGateway.broadcastToChannel(channelId, 'message:reaction', {
+      messageId,
+      channelId,
+      reactions,
+    });
+
+    return { success: true, reactions };
   }
 
   async markRead(
