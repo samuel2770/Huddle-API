@@ -12,7 +12,7 @@ import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
 
 import { MessageReaction } from './entities/message-reaction.entity.js';
-import { ChatGateway } from '../gateway/chat.gateway.js';
+import { ChatEventsService } from '../gateway/chat-events.service.js';
 
 describe('MessagesService', () => {
   let service: MessagesService;
@@ -48,7 +48,7 @@ describe('MessagesService', () => {
     createQueryBuilder: vi.fn(),
   };
 
-  const mockChatGateway = {
+  const mockChatEventsService = {
     broadcastToChannel: vi.fn(),
   };
 
@@ -79,8 +79,8 @@ describe('MessagesService', () => {
           useValue: mockMemberRepo,
         },
         {
-          provide: ChatGateway,
-          useValue: mockChatGateway,
+          provide: ChatEventsService,
+          useValue: mockChatEventsService,
         },
       ],
     }).compile();

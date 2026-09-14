@@ -1,13 +1,15 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatGateway } from './chat.gateway.js';
 import { MessagesModule } from '../messages/messages.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
+import { ChatEventsModule } from './chat-events.module.js';
 
 @Module({
   imports: [
-    forwardRef(() => MessagesModule),
+    MessagesModule,
+    ChatEventsModule,
     AuthModule,
     TypeOrmModule.forFeature([ChannelMember]),
   ],

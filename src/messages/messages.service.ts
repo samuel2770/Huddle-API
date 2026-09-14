@@ -1,10 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   NotFoundException,
-  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThan, Repository } from 'typeorm';
@@ -16,7 +14,7 @@ import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
 import { UpdateMessageDto } from './dto/update-message.dto.js';
 import { QueryMessagesDto } from './dto/query-messages.dto.js';
-import { ChatGateway } from '../gateway/chat.gateway.js';
+import { ChatEventsService } from '../gateway/chat-events.service.js';
 
 @Injectable()
 export class MessagesService {
@@ -31,8 +29,7 @@ export class MessagesService {
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
     private readonly memberRepository: Repository<ChannelMember>,
-    @Inject(forwardRef(() => ChatGateway))
-    private readonly chatGateway: ChatGateway,
+    private readonly chatEventsService: ChatEventsService,
   ) {}
 
   async create(
@@ -146,7 +143,7 @@ export class MessagesService {
 
     const result = fullMessage || savedMessage;
     // Broadcast real-time message creation via WebSocket
-    this.chatGateway.broadcastToChannel(channelId, 'message:new', {
+    this.chatEventsService.broadcastToChannel(channelId, 'message:new', {
       message: result,
       channelId,
     });
@@ -299,7 +296,7 @@ export class MessagesService {
 
     const result = fullUpdated || saved;
     // Broadcast update via WebSocket
-    this.chatGateway.broadcastToChannel(channelId, 'message:updated', {
+    this.chatEventsService.broadcastToChannel(channelId, 'message:updated', {
       message: result,
       channelId,
     });
@@ -332,7 +329,7 @@ export class MessagesService {
     }
 
     // Broadcast deletion via WebSocket
-    this.chatGateway.broadcastToChannel(channelId, 'message:deleted', {
+    this.chatEventsService.broadcastToChannel(channelId, 'message:deleted', {
       messageId,
       channelId,
     });
@@ -378,7 +375,7 @@ export class MessagesService {
     });
 
     // Broadcast real-time reaction update to all clients in this channel
-    this.chatGateway.broadcastToChannel(channelId, 'message:reaction', {
+    this.chatEventsService.broadcastToChannel(channelId, 'message:reaction', {
       messageId,
       channelId,
       reactions,

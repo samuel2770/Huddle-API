@@ -1,22 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Huddle — Grace's Workspace</title>
-  <meta name="description" content="Huddle Workspace Dashboard. Collaborate with your team, manage channels, and stay connected.">
+  <meta name="description"
+    content="Huddle Workspace Dashboard. Collaborate with your team, manage channels, and stay connected.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="dashboard.css">
 </head>
+
 <body>
   <div class="dashboard-viewport-wrapper">
-    
+
     <!-- Mobile Top Navigation Bar (<768px) -->
     <header class="mobile-top-bar" id="mobile-top-bar">
       <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Open sidebar drawer">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
           <line x1="3" y1="6" x2="21" y2="6"></line>
           <line x1="3" y1="12" x2="21" y2="12"></line>
           <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -27,7 +33,8 @@
       </div>
       <div class="mobile-avatar" title="Grace Abdul">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+          <path
+            d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
         </svg>
       </div>
     </header>
@@ -37,20 +44,21 @@
 
     <!-- Main Outer Mockup Container (Rounded, Shadowed) -->
     <div class="dashboard-app-frame" id="dashboard-app-frame">
-      
+
       <!-- Left Sidebar: Dark Navy -->
       <aside class="dashboard-sidebar" id="dashboard-sidebar" aria-label="Workspace navigation">
-        
+
         <!-- Sidebar Top Section -->
         <div class="sidebar-top">
-          
+
           <!-- Logo & Mobile Drawer Close -->
           <div class="sidebar-brand-row">
             <a href="dashboard.html" class="sidebar-brand-logo" aria-label="Huddle home">
               huddle<span class="brand-dot">.</span>
             </a>
             <button type="button" class="mobile-drawer-close-btn" id="drawer-close-btn" aria-label="Close sidebar">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -60,74 +68,70 @@
           <!-- Search Bar -->
           <div class="sidebar-search-container">
             <div class="sidebar-search-wrapper">
-              <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              <input
-                type="text"
-                class="sidebar-search-input"
-                id="sidebar-search-input"
-                placeholder="Search"
-                aria-label="Search channels and workspaces"
-                autocomplete="off"
-              >
+              <input type="text" class="sidebar-search-input" id="sidebar-search-input" placeholder="Search"
+                aria-label="Search channels and workspaces" autocomplete="off">
             </div>
           </div>
 
           <!-- Workspace Switcher Section & Popover -->
           <div class="workspace-switcher-wrapper">
-            
+
             <!-- Switcher Trigger Row -->
-            <button
-              type="button"
-              class="workspace-switcher-row"
-              id="workspace-switcher-trigger"
-              aria-haspopup="true"
-              aria-expanded="false"
-              aria-controls="workspace-popover"
-            >
+            <button type="button" class="workspace-switcher-row" id="workspace-switcher-trigger" aria-haspopup="true"
+              aria-expanded="false" aria-controls="workspace-popover">
               <div class="workspace-avatar" aria-hidden="true">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  <path
+                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                 </svg>
               </div>
               <span class="workspace-name-text">Grace's Workspace</span>
-              <svg class="switcher-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg class="switcher-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
             </button>
 
             <!-- Workspace Dropdown Popover (Floating White Card Overlay) -->
-            <div
-              class="workspace-popover"
-              id="workspace-popover"
-              role="menu"
-              aria-label="Workspace options"
-              aria-hidden="true"
-            >
+            <div class="workspace-popover" id="workspace-popover" role="menu" aria-label="Workspace options"
+              aria-hidden="true">
               <!-- Row 1: Current Workspace Header -->
-              <div class="popover-row-header" role="none" style="flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 16px;">
+              <div class="popover-row-header" role="none"
+                style="flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 16px;">
                 <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
                   <div class="popover-avatar-lg" aria-hidden="true" style="flex-shrink: 0;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                      <path
+                        d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                     </svg>
                   </div>
                   <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
-                    <span class="popover-workspace-title" style="font-weight: 700; color: #101828; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">My Workspace</span>
+                    <span class="popover-workspace-title"
+                      style="font-weight: 700; color: #101828; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">My
+                      Workspace</span>
                     <span style="font-size: 11.5px; color: #667085;">Your Private Workspace</span>
                   </div>
                 </div>
 
                 <!-- Workspace ID & 1-Click Copy Box -->
-                <div style="background: #F9FAFB; border: 1px solid #EAECF0; border-radius: 8px; padding: 8px 10px; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div
+                  style="background: #F9FAFB; border: 1px solid #EAECF0; border-radius: 8px; padding: 8px 10px; width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                   <div style="display: flex; flex-direction: column; min-width: 0;">
-                    <span style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; color: #98A2B3; letter-spacing: 0.5px;">Workspace ID</span>
-                    <code id="popover-workspace-id-text" style="font-size: 11px; font-weight: 600; color: #344054; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">loading...</code>
+                    <span
+                      style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; color: #98A2B3; letter-spacing: 0.5px;">Workspace
+                      ID</span>
+                    <code id="popover-workspace-id-text"
+                      style="font-size: 11px; font-weight: 600; color: #344054; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">loading...</code>
                   </div>
-                  <button type="button" id="copy-workspace-id-btn" title="Copy Workspace ID to invite teammates" style="background: #FF6A00; color: #ffffff; border: none; border-radius: 6px; padding: 5px 9px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; transition: opacity 0.15s ease;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <button type="button" id="copy-workspace-id-btn" title="Copy Workspace ID to invite teammates"
+                    style="background: #FF6A00; color: #ffffff; border: none; border-radius: 6px; padding: 5px 9px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; transition: opacity 0.15s ease;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                      stroke-linecap="round" stroke-linejoin="round">
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                     </svg>
@@ -143,14 +147,10 @@
               </div>
 
               <!-- Row 2: Join a Workspace (Person with arrow pointing right/out) -->
-              <button
-                type="button"
-                class="popover-item-btn"
-                id="join-workspace-btn"
-                role="menuitem"
-              >
+              <button type="button" class="popover-item-btn" id="join-workspace-btn" role="menuitem">
                 <div class="popover-icon-wrapper" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 19a6 6 0 0 0-12 0"></path>
                     <circle cx="8" cy="9" r="4"></circle>
                     <path d="M17 9l4 3-4 3"></path>
@@ -161,14 +161,11 @@
               </button>
 
               <!-- Row 3: Create a new workspace (Highlighted with light gray rounded bg) -->
-              <button
-                type="button"
-                class="popover-item-btn primary-action-row"
-                id="create-workspace-btn"
-                role="menuitem"
-              >
+              <button type="button" class="popover-item-btn primary-action-row" id="create-workspace-btn"
+                role="menuitem">
                 <div class="popover-badge-plus" aria-hidden="true">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.8"
+                    stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
@@ -185,8 +182,10 @@
             <div class="sidebar-nav-section" id="sidebar-channel-section">
               <div class="sidebar-section-header">
                 <span class="section-title">CHANNEL</span>
-                <a href="create-channel.html" class="section-add-btn" id="sidebar-add-channel-btn" aria-label="Create channel" title="Create a channel">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <a href="create-channel.html" class="section-add-btn" id="sidebar-add-channel-btn"
+                  aria-label="Create channel" title="Create a channel">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
@@ -201,8 +200,10 @@
             <div class="sidebar-nav-section" id="sidebar-dms-section">
               <div class="sidebar-section-header">
                 <span class="section-title">DIRECT MESSAGES</span>
-                <button type="button" class="section-add-btn" id="sidebar-add-dm-btn" aria-label="Start direct message" title="New Direct Message">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <button type="button" class="section-add-btn" id="sidebar-add-dm-btn" aria-label="Start direct message"
+                  title="New Direct Message">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
@@ -221,10 +222,11 @@
 
         <!-- Sidebar Bottom Section -->
         <div class="sidebar-bottom">
-          
+
           <!-- Log Out Row -->
           <a href="index.html" class="sidebar-logout-row" id="sidebar-logout-btn" role="button">
-            <svg class="logout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg class="logout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -236,10 +238,12 @@
           <hr class="sidebar-divider" aria-hidden="true">
 
           <!-- User Profile Row (Click to view & edit profile) -->
-          <button type="button" class="sidebar-user-row" id="sidebar-user-profile-btn" aria-label="View and edit profile" title="Click to view & edit your profile">
+          <button type="button" class="sidebar-user-row" id="sidebar-user-profile-btn"
+            aria-label="View and edit profile" title="Click to view & edit your profile">
             <div class="user-avatar-circle" id="sidebar-user-avatar-circle" aria-hidden="true">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                <path
+                  d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
               </svg>
             </div>
             <div class="user-info-text">
@@ -248,7 +252,8 @@
               <span class="user-email" id="sidebar-user-email" title="grace@teamname.com">grace@teamname...</span>
             </div>
             <div class="user-edit-badge" title="Edit profile" aria-hidden="true">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
               </svg>
@@ -262,10 +267,11 @@
       <!-- Right Main Content Area: Centered Empty State -->
       <main class="dashboard-main" id="dashboard-main">
         <div class="empty-state-container">
-          
+
           <!-- Hash Channel Icon Container (Rounded square, light gray bg) -->
           <div class="empty-state-icon-box" aria-hidden="true">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
+              stroke-linecap="round" stroke-linejoin="round">
               <line x1="4" y1="9" x2="20" y2="9"></line>
               <line x1="4" y1="15" x2="20" y2="15"></line>
               <line x1="10" y1="3" x2="8" y2="21"></line>
@@ -294,15 +300,17 @@
     <!-- ====================================================================
          1. Join a Workspace Modal
          ==================================================================== -->
-    <div id="join-workspace-modal" class="join-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="join-modal-title" aria-hidden="true">
+    <div id="join-workspace-modal" class="join-modal-overlay" role="dialog" aria-modal="true"
+      aria-labelledby="join-modal-title" aria-hidden="true">
       <div class="join-modal-backdrop" id="join-modal-backdrop"></div>
-      
+
       <div class="join-modal-shell">
         <!-- Mobile Top Navigation Header -->
         <header class="modal-mobile-top-bar">
           <div class="modal-mobile-left">
             <button type="button" class="modal-mobile-menu-btn" aria-label="Menu">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -313,7 +321,8 @@
             </span>
           </div>
           <button type="button" class="modal-mobile-search-btn" aria-label="Search">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
@@ -331,7 +340,8 @@
         <div class="join-modal-card">
           <!-- Icon: Rounded square (~48-56px), solid orange, white home/building glyph -->
           <div class="join-modal-icon-box" aria-hidden="true">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
@@ -339,7 +349,7 @@
 
           <!-- Heading: Bold serif, dark navy -->
           <h2 class="join-modal-heading" id="join-modal-title">Join a Workspace</h2>
-          
+
           <!-- Subheading: Muted gray-blue -->
           <p class="join-modal-subheading">Join an existing workspace and catch up with team members</p>
 
@@ -349,10 +359,11 @@
               <label for="workspace-id-input" class="modal-field-label">
                 Workspace ID<span class="required-asterisk" aria-hidden="true">*</span>
               </label>
-              
+
               <div class="modal-input-wrapper" id="modal-input-wrapper">
                 <div class="modal-input-icon-slot" aria-hidden="true">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="4" width="18" height="16" rx="3"></rect>
                     <circle cx="9" cy="10" r="2"></circle>
                     <line x1="15" y1="8" x2="17" y2="8"></line>
@@ -360,20 +371,15 @@
                     <line x1="7" y1="16" x2="17" y2="16"></line>
                   </svg>
                 </div>
-                <input
-                  type="text"
-                  id="workspace-id-input"
-                  class="modal-text-input"
-                  placeholder="e.g ALT10393xyz"
-                  autocomplete="off"
-                  spellcheck="false"
-                  required
-                >
+                <input type="text" id="workspace-id-input" class="modal-text-input" placeholder="e.g ALT10393xyz"
+                  autocomplete="off" spellcheck="false" required>
               </div>
 
               <!-- Helper text below the input with small info "i" icon -->
               <div class="modal-helper-row">
-                <svg class="modal-helper-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <svg class="modal-helper-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden="true">
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="16" x2="12" y2="12"></line>
                   <line x1="12" y1="8" x2="12.01" y2="8"></line>
@@ -403,15 +409,17 @@
     <!-- ====================================================================
          2. Create a Workspace Modal
          ==================================================================== -->
-    <div id="create-workspace-modal" class="join-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-modal-title" aria-hidden="true">
+    <div id="create-workspace-modal" class="join-modal-overlay" role="dialog" aria-modal="true"
+      aria-labelledby="create-modal-title" aria-hidden="true">
       <div class="join-modal-backdrop" id="create-modal-backdrop"></div>
-      
+
       <div class="join-modal-shell">
         <!-- Mobile Top Navigation Header -->
         <header class="modal-mobile-top-bar">
           <div class="modal-mobile-left">
             <button type="button" class="modal-mobile-menu-btn" aria-label="Menu">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -422,7 +430,8 @@
             </span>
           </div>
           <button type="button" class="modal-mobile-search-btn" aria-label="Search">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
@@ -440,7 +449,8 @@
         <div class="join-modal-card">
           <!-- Icon: Identical to Join modal's icon (rounded square, solid orange, white home/building glyph) -->
           <div class="join-modal-icon-box" aria-hidden="true">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
@@ -448,7 +458,7 @@
 
           <!-- Heading: Bold serif, dark navy -->
           <h2 class="join-modal-heading" id="create-modal-title">Create a Workspace</h2>
-          
+
           <!-- Subheading: Muted gray-blue (clean 2-line wrap on mobile) -->
           <p class="join-modal-subheading create-subheading">Add a new workspace and invite your teammates</p>
 
@@ -458,24 +468,18 @@
               <label for="workspace-name-input" class="modal-field-label">
                 Workspace Name<span class="required-asterisk" aria-hidden="true">*</span>
               </label>
-              
+
               <div class="modal-input-wrapper" id="create-input-wrapper">
                 <div class="modal-input-icon-slot" aria-hidden="true">
                   <!-- Building / Workspace Icon (consistent with modal header icon) -->
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                     <polyline points="9 22 9 12 15 12 15 22"></polyline>
                   </svg>
                 </div>
-                <input
-                  type="text"
-                  id="workspace-name-input"
-                  class="modal-text-input"
-                  placeholder="e.g AltSchool Africa"
-                  autocomplete="off"
-                  spellcheck="false"
-                  required
-                >
+                <input type="text" id="workspace-name-input" class="modal-text-input" placeholder="e.g AltSchool Africa"
+                  autocomplete="off" spellcheck="false" required>
               </div>
               <!-- No helper text below this field per specification -->
             </div>
@@ -501,14 +505,17 @@
     <!-- ====================================================================
          3. User Profile Modal (Edit Avatar, Full Name, Unique Username, View Email)
          ==================================================================== -->
-    <div id="user-profile-modal" class="join-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" aria-hidden="true">
+    <div id="user-profile-modal" class="join-modal-overlay" role="dialog" aria-modal="true"
+      aria-labelledby="profile-modal-title" aria-hidden="true">
       <div class="join-modal-backdrop" id="profile-modal-backdrop"></div>
-      
+
       <div class="modal-dialog-shell">
         <div class="modal-dialog-card profile-modal-card">
           <!-- Close Button -->
-          <button type="button" class="modal-close-icon-btn" id="profile-modal-close-btn" aria-label="Close profile modal">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button type="button" class="modal-close-icon-btn" id="profile-modal-close-btn"
+            aria-label="Close profile modal">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -536,20 +543,23 @@
                     <polyline points="21 15 16 10 5 21"></polyline>
                   </svg>
                 </div>
-                <input
-                  type="url"
-                  id="profile-avatar-input"
-                  class="modal-text-input"
-                  placeholder="https://example.com/avatar.jpg"
-                  autocomplete="off"
-                >
+                <input type="url" id="profile-avatar-input" class="modal-text-input"
+                  placeholder="https://example.com/avatar.jpg" autocomplete="off">
               </div>
               <div class="avatar-presets-row">
                 <span class="presets-label">Presets:</span>
-                <button type="button" class="avatar-preset-btn" data-url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" title="Preset 1">✨ 1</button>
-                <button type="button" class="avatar-preset-btn" data-url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" title="Preset 2">💼 2</button>
-                <button type="button" class="avatar-preset-btn" data-url="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150" title="Preset 3">🌸 3</button>
-                <button type="button" class="avatar-preset-btn" data-url="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150" title="Preset 4">⚡ 4</button>
+                <button type="button" class="avatar-preset-btn"
+                  data-url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" title="Preset 1">✨
+                  1</button>
+                <button type="button" class="avatar-preset-btn"
+                  data-url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150" title="Preset 2">💼
+                  2</button>
+                <button type="button" class="avatar-preset-btn"
+                  data-url="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150" title="Preset 3">🌸
+                  3</button>
+                <button type="button" class="avatar-preset-btn"
+                  data-url="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150" title="Preset 4">⚡
+                  4</button>
                 <button type="button" class="avatar-preset-btn" data-url="" title="Reset to initials">Clear</button>
               </div>
             </div>
@@ -569,13 +579,8 @@
                     <circle cx="12" cy="7" r="4"></circle>
                   </svg>
                 </div>
-                <input
-                  type="text"
-                  id="profile-fullname-input"
-                  class="modal-text-input"
-                  placeholder="e.g Grace Abdul"
-                  required
-                >
+                <input type="text" id="profile-fullname-input" class="modal-text-input" placeholder="e.g Grace Abdul"
+                  required>
               </div>
             </div>
 
@@ -588,26 +593,18 @@
                 <div class="modal-input-icon-slot" aria-hidden="true">
                   <span style="font-weight:700;font-size:16px;color:#FF6A00;">@</span>
                 </div>
-                <input
-                  type="text"
-                  id="profile-username-input"
-                  class="modal-text-input"
-                  placeholder="grace_abdul"
-                  pattern="[a-zA-Z0-9_.]+"
-                  minlength="3"
-                  maxlength="30"
-                  required
-                  spellcheck="false"
-                  autocomplete="off"
-                >
+                <input type="text" id="profile-username-input" class="modal-text-input" placeholder="grace_abdul"
+                  pattern="[a-zA-Z0-9_.]+" minlength="3" maxlength="30" required spellcheck="false" autocomplete="off">
               </div>
               <div class="modal-helper-row">
-                <svg class="modal-helper-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="modal-helper-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="16" x2="12" y2="12"></line>
                   <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
-                <span class="modal-helper-text">This unique name is what teammates use to add you to channels and groups.</span>
+                <span class="modal-helper-text">This unique name is what teammates use to add you to channels and
+                  groups.</span>
               </div>
             </div>
 
@@ -623,12 +620,7 @@
                     <polyline points="22,6 12,13 2,6"></polyline>
                   </svg>
                 </div>
-                <input
-                  type="email"
-                  id="profile-email-input"
-                  class="modal-text-input"
-                  disabled
-                >
+                <input type="email" id="profile-email-input" class="modal-text-input" disabled>
                 <span class="verified-pill">Verified</span>
               </div>
             </div>
@@ -650,14 +642,16 @@
     <!-- ====================================================================
          4. Add Channel Member Modal (Search by @username or email)
          ==================================================================== -->
-    <div id="channel-add-member-modal" class="join-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="add-member-modal-title" aria-hidden="true">
+    <div id="channel-add-member-modal" class="join-modal-overlay" role="dialog" aria-modal="true"
+      aria-labelledby="add-member-modal-title" aria-hidden="true">
       <div class="join-modal-backdrop" id="channel-add-member-backdrop"></div>
-      
+
       <div class="modal-dialog-shell">
         <div class="modal-dialog-card">
           <!-- Close Button -->
           <button type="button" class="modal-close-icon-btn" id="channel-add-member-close-btn" aria-label="Close modal">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -665,7 +659,8 @@
 
           <!-- Icon -->
           <div class="join-modal-icon-box" style="background:#FF6A00;" aria-hidden="true">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="8.5" cy="7.5" r="4"></circle>
               <line x1="20" y1="8" x2="20" y2="14"></line>
@@ -674,34 +669,29 @@
           </div>
 
           <h2 class="join-modal-heading" id="add-member-modal-title">Add Member to Channel</h2>
-          <p class="join-modal-subheading" id="add-member-modal-subheading">Enter their unique username or email to add them</p>
+          <p class="join-modal-subheading" id="add-member-modal-subheading">Enter their unique username or email to add
+            them</p>
 
           <form id="channel-add-member-form" class="join-modal-form" novalidate onsubmit="return false;">
             <div class="modal-field-group">
               <label for="channel-member-search-input" class="modal-field-label">
                 Unique Username or Email<span class="required-asterisk" aria-hidden="true">*</span>
               </label>
-              
+
               <div class="modal-input-wrapper" id="add-member-input-wrapper">
                 <div class="modal-input-icon-slot" aria-hidden="true">
                   <span style="font-weight:700;font-size:16px;color:#FF6A00;">@</span>
                 </div>
-                <input
-                  type="text"
-                  id="channel-member-search-input"
-                  class="modal-text-input"
-                  placeholder="e.g. grace_abdul or stephenaro3"
-                  autocomplete="off"
-                  spellcheck="false"
-                  required
-                >
+                <input type="text" id="channel-member-search-input" class="modal-text-input"
+                  placeholder="e.g. grace_abdul or stephenaro3" autocomplete="off" spellcheck="false" required>
               </div>
 
               <!-- Live Suggestion Box -->
               <div id="add-member-live-results" class="add-member-live-results" style="display:none;"></div>
 
               <div class="modal-helper-row">
-                <svg class="modal-helper-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="modal-helper-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="16" x2="12" y2="12"></line>
                   <line x1="12" y1="8" x2="12.01" y2="8"></line>
@@ -728,7 +718,8 @@
     <div class="action-dialog" id="action-dialog" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="action-dialog-card">
         <div class="action-dialog-icon" id="action-dialog-icon">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="12"></line>
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -746,4 +737,5 @@
   <script src="js/api.js"></script>
   <script src="dashboard.js"></script>
 </body>
+
 </html>

@@ -2,6 +2,7 @@ import {
   WebSocketGateway,
   WebSocketServer,
   SubscribeMessage,
+  OnGatewayInit,
   OnGatewayConnection,
   OnGatewayDisconnect,
   ConnectedSocket,
@@ -15,8 +16,8 @@ import { CreateMessageDto } from '../messages/dto/create-message.dto.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
-
 import { PresenceService } from '../redis/presence.service.js';
+import { ChatEventsService } from './chat-events.service.js';
 
 interface AuthenticatedSocket extends Socket {
   userId: string;
@@ -29,7 +30,9 @@ interface AuthenticatedSocket extends Socket {
   },
   namespace: '/chat',
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -40,9 +43,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
     private readonly messagesService: MessagesService,
     private readonly presenceService: PresenceService,
+    private readonly chatEventsService: ChatEventsService,
     @InjectRepository(ChannelMember)
     private readonly memberRepository: Repository<ChannelMember>,
   ) {}
+
+  afterInit(server: Server): void {
+    this.chatEventsService.setServer(server);
+  }
 
   /**
    * JWT auth middleware on WebSocket connection.
@@ -118,9 +126,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
    * Broadcast an event to a channel room from external services
    */
   broadcastToChannel(channelId: string, event: string, payload: any): void {
-    if (this.server) {
-      this.server.to(`channel:${channelId}`).emit(event, payload);
-    }
+    this.chatEventsService.broadcastToChannel(channelId, event, payload);
   }
 
   /**

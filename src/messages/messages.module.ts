@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MessagesService } from './messages.service.js';
 import { MessagesController } from './messages.controller.js';
@@ -7,7 +7,7 @@ import { Attachment } from './entities/attachment.entity.js';
 import { MessageReaction } from './entities/message-reaction.entity.js';
 import { Channel } from '../channels/entities/channel.entity.js';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
-import { GatewayModule } from '../gateway/gateway.module.js';
+import { ChatEventsModule } from '../gateway/chat-events.module.js';
 
 @Module({
   imports: [
@@ -18,7 +18,7 @@ import { GatewayModule } from '../gateway/gateway.module.js';
       ChannelMember,
       MessageReaction,
     ]),
-    forwardRef(() => GatewayModule),
+    ChatEventsModule,
   ],
   controllers: [MessagesController],
   providers: [MessagesService],
