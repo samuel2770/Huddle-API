@@ -185,6 +185,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
+    socket.on('channel:invited', async ({ channel }) => {
+      console.log('[Huddle] Invited to channel:', channel?.name);
+      window.showHuddleToast(`You were added to #${channel?.name}`, 'success');
+      const wsId = window.HuddleApi.getActiveWorkspaceId();
+      if (wsId) {
+        if (typeof loadWorkspaceChannels === 'function') {
+          await loadWorkspaceChannels(wsId);
+        }
+      }
+    });
+
     window.huddleSocket = socket;
   }
 

@@ -14,4 +14,10 @@ export class ChatEventsService {
       this.server.to(`channel:${channelId}`).emit(event, payload);
     }
   }
+
+  broadcastToUser(userId: string, event: string, payload: any): void {
+    if (this.server) {
+      this.server.to(`user:${userId}`).emit(event, payload);
+    }
+  }
 }

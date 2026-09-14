@@ -17,6 +17,7 @@ import {
 import { Message } from '../messages/entities/message.entity.js';
 import { CreateChannelDto } from './dto/create-channel.dto.js';
 import { QueryChannelsDto } from './dto/query-channels.dto.js';
+import { ChatEventsService } from '../gateway/chat-events.service.js';
 
 @Injectable()
 export class ChannelsService {
@@ -26,6 +27,7 @@ export class ChannelsService {
     @InjectRepository(ChannelMember)
     private readonly memberRepository: Repository<ChannelMember>,
     private readonly dataSource: DataSource,
+    private readonly chatEventsService: ChatEventsService,
   ) {}
 
   /**
@@ -383,6 +385,11 @@ export class ChannelsService {
     } catch {
       // Non-blocking
     }
+
+    // Broadcast channel invite to the target user via WebSocket
+    this.chatEventsService.broadcastToUser(userIdToAdd, 'channel:invited', {
+      channel,
+    });
 
     return saved;
   }

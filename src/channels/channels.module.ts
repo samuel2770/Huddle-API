@@ -6,8 +6,8 @@ import { Channel } from './entities/channel.entity.js';
 import { ChannelMember } from './entities/channel-member.entity.js';
 import { User } from '../users/entities/user.entity.js';
 import { WorkspaceMember } from '../workspaces/entities/workspace-member.entity.js';
-
 import { Message } from '../messages/entities/message.entity.js';
+import { ChatEventsModule } from '../gateway/chat-events.module.js';
 
 @Module({
   imports: [
@@ -18,6 +18,7 @@ import { Message } from '../messages/entities/message.entity.js';
       WorkspaceMember,
       Message,
     ]),
+    ChatEventsModule,
   ],
   controllers: [ChannelsController],
   providers: [ChannelsService],

@@ -89,6 +89,9 @@ export class ChatGateway
       }
       this.connectedUsers.get(client.userId)!.add(client.id);
 
+      // Join a personal room for direct user events (like channel invites)
+      await client.join(`user:${client.userId}`);
+
       // Set online in Redis presence service
       await this.presenceService.setOnline(client.userId);
 
