@@ -61,6 +61,18 @@
       if (token) localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
       else localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
     },
+    isTokenLikelyExpired(token) {
+      if (!token) return true;
+      try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return true;
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (!payload.exp) return false;
+        return Date.now() >= payload.exp * 1000 - 30000;
+      } catch {
+        return true;
+      }
+    },
     getUser() {
       try {
         const raw = localStorage.getItem(STORAGE_KEYS.USER);
@@ -105,10 +117,17 @@
       Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
     },
     isAuthenticated() {
-      return !!this.getToken();
+      const token = this.getToken();
+      if (!token) return false;
+      if (this.isTokenLikelyExpired(token)) {
+        return false;
+      }
+      return true;
     },
     requireAuth(redirectUrl = 'signin.html') {
-      if (!this.isAuthenticated()) {
+      const token = this.getToken();
+      if (!token || this.isTokenLikelyExpired(token)) {
+        this.clearSession();
         window.location.href = redirectUrl;
         return false;
       }
@@ -243,6 +262,7 @@
       },
 
       async login(email, password) {
+        ApiClient.clearSession();
         let data;
         try {
           data = await ApiClient.request('/api/v1/auth/login', {

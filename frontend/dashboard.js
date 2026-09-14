@@ -10,6 +10,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // Hoisted references — must be declared before initializeWorkspace()
+  let workspaceSyncInterval = null;
+  let knownWorkspaceCount = 0;
+
   // DOM Elements - Sidebar & Switcher
   const switcherTrigger = document.getElementById('workspace-switcher-trigger');
   const workspacePopover = document.getElementById('workspace-popover');
@@ -924,7 +928,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const activeWsId = window.HuddleApi.getActiveWorkspaceId();
         if (!activeWsId) return;
 
-        // Check if current workspace's channel list has new channels
+        // Check if current workspace's channel list has new channels (invited channels appear here)
         const channels = await window.HuddleApi.channels.list(activeWsId);
         if (channels && sidebarChannelsList) {
           const newChannelIds = channels.map((c) => c.id).join(',');
@@ -934,7 +938,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
       } catch {}
-    }, 2500);
+    }, 2000); // Poll every 2s so invited channels appear quickly
   }
 
   function renderWorkspaceUI(activeWs) {
@@ -1053,6 +1057,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         li.classList.add('active');
         window.HuddleApi.setActiveChannelId(channel.id);
         renderChannelMainView(channel);
+        // Close mobile drawer when a channel is selected
+        closeMobileDrawer();
       });
 
       li.appendChild(link);

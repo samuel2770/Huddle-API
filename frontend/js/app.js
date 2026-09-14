@@ -18,7 +18,7 @@ const API_BASE_URL = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', () => {
-  // If already authenticated, redirect to dashboard
+  // If already authenticated (valid, non-expired token), redirect to dashboard
   if (window.HuddleApi && !window.location.search.includes('logout=true')) {
     if (window.HuddleApi.redirectIfAuthenticated('dashboard.html')) {
       return;
@@ -282,8 +282,10 @@ async function handleSignup(form) {
 
   try {
     if (window.HuddleApi) {
+      // Clear any previous user's session before registering/logging in
+      window.HuddleApi.clearSession();
       await window.HuddleApi.auth.signup(fullName, email, password);
-      // Automatically log user in
+      // Automatically log user in (auth.login also calls clearSession internally)
       try {
         await window.HuddleApi.auth.login(email, password);
         showToast('Account created! Welcome to Huddle.', 'success');
@@ -344,6 +346,7 @@ async function handleSignin(form) {
 
   try {
     if (window.HuddleApi) {
+      // auth.login internally clears session before storing new tokens
       const data = await window.HuddleApi.auth.login(email, password);
       showToast(`Welcome back${data.user?.fullName ? ', ' + data.user.fullName : ''}!`, 'success');
       setTimeout(() => {
@@ -352,6 +355,8 @@ async function handleSignin(form) {
       return;
     }
 
+    // Fallback: clear any stale data before storing new login
+    window.HuddleApi && window.HuddleApi.clearSession();
     const res = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

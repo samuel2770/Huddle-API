@@ -1858,3 +1858,138 @@ html, body {
 }
 
 
+/* ==========================================================================
+   Mobile UX Improvements — Chat Input, Modals, Channel View
+   ========================================================================== */
+
+/* --- Chat input bar — stays above mobile keyboard --- */
+@media (max-width: 767.98px) {
+  /* The channel view is rendered inside dashboard-main; ensure it fills height */
+  #dashboard-main {
+    padding: 0 !important;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* Channel view column fills remaining space after the top bar */
+  #dashboard-main > div {
+    height: 100% !important;
+    border-radius: 0 !important;
+  }
+
+  /* Messages scrollable area takes remaining space, pushing input to bottom */
+  #channel-messages-container {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px !important;
+  }
+
+  /* Sticky chat input bar above keyboard */
+  #dashboard-main form#channel-chat-form {
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Wrapper for chat input form — uses safe-area for notched phones */
+  #dashboard-main > div > div:last-child {
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom)) !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Channel header on mobile — allow wrapping */
+  #dashboard-main header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 12px 16px !important;
+  }
+
+  #dashboard-main header > div:first-child {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Invite / member buttons on mobile: shrink gracefully */
+  #channel-invite-btn {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+
+  .channel-member-pill {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* System announcement messages wrap on small screens */
+  .system-announcement-msg {
+    flex-wrap: wrap !important;
+    font-size: 12px !important;
+  }
+
+  /* Sidebar active channel item — stronger highlight on mobile */
+  .sidebar-channel-item.active .sidebar-channel-link {
+    background-color: rgba(255, 106, 0, 0.15) !important;
+    color: #FF6A00 !important;
+  }
+
+  /* Empty state center-aligned on mobile */
+  .empty-state-container {
+    padding: 40px 24px !important;
+  }
+}
+
+/* --- All modals — prevent overflow and ensure scrollability on mobile --- */
+@media (max-width: 767.98px) {
+  /* Generic overlay modals (profile, add member, action dialog) */
+  [id$="-modal"].open,
+  [id$="-modal-overlay"].open,
+  .join-modal-overlay.open,
+  .create-modal-overlay.open {
+    align-items: flex-end !important;
+  }
+
+  /* Profile modal card */
+  .profile-modal-card,
+  #channel-add-member-modal .join-modal-card,
+  #user-profile-modal .join-modal-card {
+    max-height: 90dvh !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Action dialog stays centered */
+  #action-dialog .join-modal-card {
+    border-radius: 16px !important;
+    margin: 0 16px !important;
+    max-height: 70dvh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Avatar preset buttons in profile modal — wrap on small screens */
+  .avatar-presets-row {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+}
+
+/* --- Workspace popover stays within viewport on mobile --- */
+@media (max-width: 400px) {
+  .workspace-popover {
+    width: calc(100vw - 24px) !important;
+    left: 12px !important;
+  }
+}
+
+/* --- Prevent horizontal overflow site-wide on small screens --- */
+@media (max-width: 767.98px) {
+  html, body {
+    overflow-x: hidden;
+  }
+}
