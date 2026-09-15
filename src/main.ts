@@ -2,10 +2,11 @@
 if (typeof process.loadEnvFile === 'function') {
   try {
     process.loadEnvFile();
-  } catch {}
+  } catch { }
 }
 
 import helmet from 'helmet';
+import compression from 'compression';
 import { join } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -17,6 +18,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.use(compression());
 
   app.use(
     helmet({

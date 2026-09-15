@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  Index,
   type Relation,
 } from 'typeorm';
 import { Channel } from './channel.entity.js';
@@ -13,7 +14,8 @@ import { User } from '../../users/entities/user.entity.js';
 import { Message } from '../../messages/entities/message.entity.js';
 
 @Entity('channel_members')
-@Unique(['channel_id', 'user_id'])
+@Unique('uq_channel_members_channel_user', ['channel_id', 'user_id'])
+@Index('idx_channel_members_channel_user', ['channel_id', 'user_id'], { unique: true })
 export class ChannelMember {
   @PrimaryGeneratedColumn('uuid')
   id: string;

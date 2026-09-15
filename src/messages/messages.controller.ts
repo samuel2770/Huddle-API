@@ -23,8 +23,6 @@ import { QueryMessagesDto } from './dto/query-messages.dto.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
-import { ReactionDto } from './dto/reaction.dto.js';
-
 @ApiTags('Messages')
 @ApiBearerAuth()
 @Controller(['channels/:channelId/messages', 'api/v1/channels/:channelId/messages'])
@@ -81,40 +79,6 @@ export class MessagesController {
     @CurrentUser('id') userId: string,
   ) {
     return this.messagesService.remove(channelId, messageId, userId);
-  }
-
-  @Post(':messageId/reactions')
-  @ApiOperation({ summary: 'Toggle an emoji reaction on a message' })
-  @ApiResponse({ status: 200, description: 'Reaction toggled' })
-  async toggleReaction(
-    @Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
-    @Param('messageId', new ParseUUIDPipe({ version: '4' })) messageId: string,
-    @CurrentUser('id') userId: string,
-    @Body() dto: ReactionDto,
-  ) {
-    return this.messagesService.toggleReaction(
-      channelId,
-      messageId,
-      userId,
-      dto.emoji,
-    );
-  }
-
-  @Delete(':messageId/reactions/:emoji')
-  @ApiOperation({ summary: 'Remove a specific emoji reaction from a message' })
-  @ApiResponse({ status: 200, description: 'Reaction removed' })
-  async removeReaction(
-    @Param('channelId', new ParseUUIDPipe({ version: '4' })) channelId: string,
-    @Param('messageId', new ParseUUIDPipe({ version: '4' })) messageId: string,
-    @Param('emoji') emoji: string,
-    @CurrentUser('id') userId: string,
-  ) {
-    return this.messagesService.toggleReaction(
-      channelId,
-      messageId,
-      userId,
-      decodeURIComponent(emoji),
-    );
   }
 
   @Patch(':messageId/read')

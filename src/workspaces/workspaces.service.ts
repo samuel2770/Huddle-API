@@ -58,6 +58,25 @@ export class WorkspacesService {
       });
       await manager.save(WorkspaceMember, ownerMember);
 
+      // Automatically create a default #general channel for the workspace
+      const generalChannel = manager.create(Channel, {
+        workspace_id: savedWorkspace.id,
+        name: 'general',
+        description: 'General discussion for the team',
+        type: ChannelType.PUBLIC,
+        created_by: userId,
+        is_archived: false,
+      });
+      const savedChannel = await manager.save(Channel, generalChannel);
+
+      const channelMember = manager.create(ChannelMember, {
+        channel_id: savedChannel.id,
+        user_id: userId,
+        unread_count: 0,
+        joined_at: new Date(),
+      });
+      await manager.save(ChannelMember, channelMember);
+
       return savedWorkspace;
     });
   }

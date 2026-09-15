@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { ChannelMember } from '../../channels/entities/channel-member.entity.js';
 import { Message } from '../../messages/entities/message.entity.js';
@@ -16,6 +17,7 @@ export enum UserStatus {
 }
 
 @Entity('users')
+@Index('idx_users_email', ['email'], { unique: true })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -26,7 +28,7 @@ export class User {
   @Column({ type: 'varchar', unique: true })
   email: string;
 
-  @Column({ type: 'varchar', unique: true })
+  @Column({ type: 'varchar', unique: true, nullable: true })
   username: string;
 
   @Column({ type: 'varchar' })

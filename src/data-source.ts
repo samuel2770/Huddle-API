@@ -7,14 +7,8 @@ import { Channel } from './channels/entities/channel.entity.js';
 import { ChannelMember } from './channels/entities/channel-member.entity.js';
 import { Message } from './messages/entities/message.entity.js';
 import { Attachment } from './messages/entities/attachment.entity.js';
-import { MessageReaction } from './messages/entities/message-reaction.entity.js';
 import { RefreshToken } from './auth/entities/refresh-token.entity.js';
-import { PasswordResetToken } from './auth/entities/password-reset-token.entity.js';
-import { Invite } from './invites/entities/invite.entity.js';
-import { CreateUsersTable1725880000000 } from '../migrations/1725880000000-create-users-table.js';
-import { CreateRefreshTokensTable1725880000001 } from '../migrations/1725880000001-create-refresh-tokens-table.js';
-import { CreatePasswordResetTokensTable1725880000002 } from '../migrations/1725880000002-create-password-reset-tokens-table.js';
-import { AddUsernameToUsers1725880000003 } from '../migrations/1725880000003-add-username-to-users.js';
+import { InitialHuddleSchema1726000000000 } from '../migrations/1726000000000-InitialHuddleSchema.js';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -31,16 +25,10 @@ export const AppDataSource = new DataSource({
     ChannelMember,
     Message,
     Attachment,
-    MessageReaction,
     RefreshToken,
-    PasswordResetToken,
-    Invite,
   ],
   migrations: [
-    CreateUsersTable1725880000000,
-    CreateRefreshTokensTable1725880000001,
-    CreatePasswordResetTokensTable1725880000002,
-    AddUsernameToUsers1725880000003,
+    InitialHuddleSchema1726000000000,
   ],
   synchronize: false,
   logging: process.env.DB_LOGGING === 'true',

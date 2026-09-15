@@ -5,10 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { MoreThan, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Message } from './entities/message.entity.js';
 import { Attachment } from './entities/attachment.entity.js';
-import { MessageReaction } from './entities/message-reaction.entity.js';
 import { Channel, ChannelType } from '../channels/entities/channel.entity.js';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
@@ -23,8 +22,6 @@ export class MessagesService {
     private readonly messageRepository: Repository<Message>,
     @InjectRepository(Attachment)
     private readonly attachmentRepository: Repository<Attachment>,
-    @InjectRepository(MessageReaction)
-    private readonly reactionRepository: Repository<MessageReaction>,
     @InjectRepository(Channel)
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
@@ -72,7 +69,7 @@ export class MessagesService {
       }
     }
 
-    const replyToId = dto.getReplyToId();
+    const replyToId = dto.getReplyToId ? dto.getReplyToId() : dto.replyToMessageId;
     if (replyToId) {
       const parent = await this.messageRepository.findOne({
         where: { id: replyToId, channel_id: channelId },
@@ -97,7 +94,7 @@ export class MessagesService {
       channel_id: channelId,
       sender_id: userId,
       content: hasContent ? dto.content!.trim() : null,
-      reply_to_message_id: replyToId,
+      reply_to_message_id: replyToId ?? null,
       is_edited: false,
       is_deleted: false,
       deleted_at: null,
@@ -137,16 +134,20 @@ export class MessagesService {
       relations: {
         attachments: true,
         sender: true,
-        reactions: { user: true },
       },
     });
 
     const result = fullMessage || savedMessage;
-    // Broadcast real-time message creation via WebSocket
-    this.chatEventsService.broadcastToChannel(channelId, 'message:new', {
+
+    // Step 5: Broadcast real-time message creation via WebSocket room
+    // Payload supports both direct message and { message, channelId } structures
+    const broadcastPayload = {
+      ...result,
       message: result,
       channelId,
-    });
+      channel_id: channelId,
+    };
+    this.chatEventsService.broadcastToChannel(channelId, 'message:new', broadcastPayload);
 
     return result;
   }
@@ -179,14 +180,12 @@ export class MessagesService {
       }
     }
 
-    const limit = query.limit ?? 20;
+    const limit = Math.min(query.limit ?? 30, 100);
 
     const qb = this.messageRepository
       .createQueryBuilder('message')
       .leftJoinAndSelect('message.attachments', 'attachment')
       .leftJoinAndSelect('message.sender', 'sender')
-      .leftJoinAndSelect('message.reactions', 'reaction')
-      .leftJoinAndSelect('reaction.user', 'reactionUser')
       .where('message.channel_id = :channelId', { channelId });
 
     if (query.replyToMessageId) {
@@ -213,6 +212,7 @@ export class MessagesService {
       }
     }
 
+    // Explicit performance index utilized: messages(channel_id, created_at DESC)
     qb.orderBy('message.created_at', 'DESC').take(limit + 1);
 
     const results = await qb.getMany();
@@ -225,23 +225,30 @@ export class MessagesService {
         ? items[items.length - 1].created_at.toISOString()
         : null;
 
-    // Mask deleted messages
-    const masked = items.map((msg) => {
-      if (msg.is_deleted) {
-        return {
-          ...msg,
-          content: null,
-          attachments: [],
-        };
-      }
-      return msg;
-    });
-
+    // Return in chronological order for conversation stream
     return {
-      messages: masked,
+      messages: items.reverse(),
       nextCursor,
       hasMore,
     };
+  }
+
+  async findOne(channelId: string, messageId: string): Promise<Message> {
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId, channel_id: channelId },
+      relations: {
+        attachments: true,
+        sender: true,
+      },
+    });
+
+    if (!message) {
+      throw new NotFoundException(
+        `Message with ID ${messageId} not found in channel ${channelId}`,
+      );
+    }
+
+    return message;
   }
 
   async update(
@@ -250,33 +257,26 @@ export class MessagesService {
     userId: string,
     dto: UpdateMessageDto,
   ): Promise<Message> {
-    const message = await this.messageRepository.findOne({
-      where: { id: messageId, channel_id: channelId },
-      relations: { attachments: true },
-    });
+    const message = await this.findOne(channelId, messageId);
 
-    if (!message) {
-      throw new NotFoundException(`Message with ID ${messageId} not found`);
+    if (message.sender_id !== userId) {
+      throw new ForbiddenException('You can only edit your own messages');
     }
 
     if (message.is_deleted) {
       throw new BadRequestException('Cannot edit a deleted message');
     }
 
-    if (message.sender_id !== userId) {
-      throw new ForbiddenException('You can only edit your own messages');
-    }
-
     const editWindowMinutes = parseInt(
       process.env.MESSAGE_EDIT_WINDOW_MINUTES ?? '15',
       10,
     );
-    const messageAgeMinutes =
-      (Date.now() - new Date(message.created_at).getTime()) / (1000 * 60);
+    const windowMs = editWindowMinutes * 60 * 1000;
+    const messageAge = Date.now() - new Date(message.created_at).getTime();
 
-    if (messageAgeMinutes > editWindowMinutes) {
+    if (messageAge > windowMs) {
       throw new BadRequestException(
-        `Message edit window has expired (${editWindowMinutes} minutes)`,
+        `Messages can only be edited within ${editWindowMinutes} minutes of sending`,
       );
     }
 
@@ -285,150 +285,56 @@ export class MessagesService {
 
     const saved = await this.messageRepository.save(message);
 
-    const fullUpdated = await this.messageRepository.findOne({
-      where: { id: saved.id },
-      relations: {
-        attachments: true,
-        sender: true,
-        reactions: { user: true },
-      },
-    });
-
-    const result = fullUpdated || saved;
-    // Broadcast update via WebSocket
+    // Broadcast update to channel
     this.chatEventsService.broadcastToChannel(channelId, 'message:updated', {
-      message: result,
+      message: saved,
       channelId,
     });
 
-    return result;
+    return saved;
   }
 
   async remove(
     channelId: string,
     messageId: string,
     userId: string,
-  ): Promise<{ success: boolean; message: string }> {
-    const message = await this.messageRepository.findOne({
-      where: { id: messageId, channel_id: channelId },
-    });
-
-    if (!message) {
-      throw new NotFoundException(`Message with ID ${messageId} not found`);
-    }
+  ): Promise<{ message: string; id: string }> {
+    const message = await this.findOne(channelId, messageId);
 
     if (message.sender_id !== userId) {
       throw new ForbiddenException('You can only delete your own messages');
     }
 
-    if (!message.is_deleted) {
-      message.is_deleted = true;
-      message.deleted_at = new Date();
-      message.content = null;
-      await this.messageRepository.save(message);
-    }
+    message.is_deleted = true;
+    message.deleted_at = new Date();
+    message.content = null;
 
-    // Broadcast deletion via WebSocket
+    await this.messageRepository.save(message);
+
+    // Broadcast deletion to channel
     this.chatEventsService.broadcastToChannel(channelId, 'message:deleted', {
       messageId,
       channelId,
     });
 
-    return {
-      success: true,
-      message: 'Message deleted successfully',
-    };
-  }
-
-  async toggleReaction(
-    channelId: string,
-    messageId: string,
-    userId: string,
-    emoji: string,
-  ): Promise<{ success: boolean; reactions: MessageReaction[] }> {
-    const message = await this.messageRepository.findOne({
-      where: { id: messageId, channel_id: channelId },
-    });
-
-    if (!message) {
-      throw new NotFoundException(`Message with ID ${messageId} not found`);
-    }
-
-    const existing = await this.reactionRepository.findOne({
-      where: { message_id: messageId, user_id: userId, emoji },
-    });
-
-    if (existing) {
-      await this.reactionRepository.remove(existing);
-    } else {
-      const reaction = this.reactionRepository.create({
-        message_id: messageId,
-        user_id: userId,
-        emoji,
-      });
-      await this.reactionRepository.save(reaction);
-    }
-
-    const reactions = await this.reactionRepository.find({
-      where: { message_id: messageId },
-      relations: { user: true },
-    });
-
-    // Broadcast real-time reaction update to all clients in this channel
-    this.chatEventsService.broadcastToChannel(channelId, 'message:reaction', {
-      messageId,
-      channelId,
-      reactions,
-    });
-
-    return { success: true, reactions };
+    return { message: 'Message deleted successfully', id: messageId };
   }
 
   async markRead(
     channelId: string,
     messageId: string,
     userId: string,
-  ): Promise<{
-    success: boolean;
-    lastReadMessageId: string;
-    unreadCount: number;
-  }> {
-    const message = await this.messageRepository.findOne({
-      where: { id: messageId, channel_id: channelId },
-    });
+  ): Promise<{ success: boolean }> {
+    const message = await this.findOne(channelId, messageId);
 
-    if (!message) {
-      throw new NotFoundException(
-        `Message with ID ${messageId} not found in this channel`,
-      );
-    }
-
-    const member = await this.memberRepository.findOne({
-      where: { channel_id: channelId, user_id: userId },
-    });
-
-    if (!member) {
-      throw new ForbiddenException('You are not a member of this channel');
-    }
-
-    member.last_read_message_id = messageId;
-
-    // Recalculate unread messages created after this message
-    const unreadAfter = await this.messageRepository.count({
-      where: {
-        channel_id: channelId,
-        is_deleted: false,
-        created_at: MoreThan(message.created_at),
+    await this.memberRepository.update(
+      { channel_id: channelId, user_id: userId },
+      {
+        last_read_message_id: message.id,
+        unread_count: 0,
       },
-    });
+    );
 
-    member.unread_count = unreadAfter;
-    await this.memberRepository.save(member);
-
-    return {
-      success: true,
-      lastReadMessageId: messageId,
-      unreadCount: member.unread_count,
-    };
+    return { success: true };
   }
 }

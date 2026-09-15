@@ -29,7 +29,7 @@ export class RefreshToken {
   expires_at: Date;
 
   @Column({ type: 'boolean', default: false })
-  is_revoked: boolean;
+  revoked: boolean;
 
   @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;

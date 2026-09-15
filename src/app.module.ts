@@ -12,7 +12,6 @@ import { CommonModule } from './common/common.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { GatewayModule } from './gateway/gateway.module.js';
 import { RedisModule } from './redis/redis.module.js';
-import { InvitesModule } from './invites/invites.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { UploadsModule } from './uploads/uploads.module.js';
 import { SearchModule } from './search/search.module.js';
@@ -22,11 +21,8 @@ import { Channel } from './channels/entities/channel.entity.js';
 import { ChannelMember } from './channels/entities/channel-member.entity.js';
 import { Message } from './messages/entities/message.entity.js';
 import { Attachment } from './messages/entities/attachment.entity.js';
-import { MessageReaction } from './messages/entities/message-reaction.entity.js';
 import { RefreshToken } from './auth/entities/refresh-token.entity.js';
-import { PasswordResetToken } from './auth/entities/password-reset-token.entity.js';
 import { WorkspaceMember } from './workspaces/entities/workspace-member.entity.js';
-import { Invite } from './invites/entities/invite.entity.js';
 
 @Module({
   imports: [
@@ -45,14 +41,10 @@ import { Invite } from './invites/entities/invite.entity.js';
         ChannelMember,
         Message,
         Attachment,
-        MessageReaction,
         RefreshToken,
-        PasswordResetToken,
         WorkspaceMember,
-        Invite,
       ],
-      autoLoadEntities: true,
-      synchronize: process.env.DB_SYNCHRONIZE !== 'false',
+      synchronize: false,
       logging: process.env.DB_LOGGING === 'true',
       ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     }),
@@ -70,7 +62,6 @@ import { Invite } from './invites/entities/invite.entity.js';
     ChannelsModule,
     MessagesModule,
     GatewayModule,
-    InvitesModule,
     MailModule,
     UploadsModule,
     SearchModule,

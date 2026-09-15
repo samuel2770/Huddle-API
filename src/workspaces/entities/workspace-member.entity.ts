@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
   Unique,
+  Index,
   type Relation,
 } from 'typeorm';
 import { Workspace } from './workspace.entity.js';
@@ -18,7 +19,8 @@ export enum WorkspaceRole {
 }
 
 @Entity('workspace_members')
-@Unique(['workspace_id', 'user_id'])
+@Unique('uq_workspace_members_workspace_user', ['workspace_id', 'user_id'])
+@Index('idx_workspace_members_workspace_user', ['workspace_id', 'user_id'])
 export class WorkspaceMember {
   @PrimaryGeneratedColumn('uuid')
   id: string;

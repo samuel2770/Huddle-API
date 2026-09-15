@@ -6,6 +6,7 @@ import {
   OneToMany,
   ManyToOne,
   JoinColumn,
+  Index,
   type Relation,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity.js';
@@ -20,6 +21,7 @@ export class Workspace {
   @Column({ type: 'varchar' })
   name: string;
 
+  @Index('idx_workspaces_slug', { unique: true })
   @Column({ type: 'varchar', unique: true })
   slug: string;
 

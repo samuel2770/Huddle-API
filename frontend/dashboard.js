@@ -14,10 +14,47 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Auth Guard - redirect immediately if user is not authenticated
-  if (window.HuddleApi && !window.HuddleApi.requireAuth('signin.html')) {
+  // 1. Auth Guard - verify session and silent refresh before rendering
+  if (window.HuddleApi && !(await window.HuddleApi.ensureAuthenticated('signin.html'))) {
     return;
   }
+
+  // Define robust global toast notification helper
+  window.showHuddleToast = function (message, type = 'info') {
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'toast-container';
+      container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const bgColor = type === 'success' ? '#079455' : type === 'error' ? '#D92D20' : '#101828';
+    toast.style.cssText = `
+      background: ${bgColor};
+      color: #ffffff;
+      padding: 12px 18px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(16, 24, 40, 0.15);
+      font-size: 14px;
+      font-weight: 500;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    `;
+    toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
+  };
 
   // Hoisted references
   let workspaceSyncInterval = null;
@@ -147,11 +184,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
-    socket.on('message:new', ({ message, channelId }) => {
-      if (activeChannel && activeChannel.id === channelId) {
-        handleIncomingMessage(message);
-      } else {
-        incrementChannelBadge(channelId);
+    socket.on('message:new', (payload) => {
+      const msg = payload?.message || payload;
+      const cId = payload?.channelId || payload?.channel_id || msg?.channelId || msg?.channel_id;
+      if (activeChannel && activeChannel.id === cId) {
+        handleIncomingMessage(msg);
+      } else if (cId) {
+        incrementChannelBadge(cId);
       }
     });
 
@@ -187,12 +226,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     socket.on('channel:invited', async ({ channel }) => {
       console.log('[Huddle] Invited to channel:', channel?.name);
-      window.showHuddleToast(`You were added to #${channel?.name}`, 'success');
-      const wsId = window.HuddleApi.getActiveWorkspaceId();
-      if (wsId) {
-        if (typeof loadWorkspaceChannels === 'function') {
+      window.showHuddleToast(`You were added to #${channel?.name || 'a channel'}`, 'success');
+      try {
+        if (typeof loadUserWorkspaces === 'function') {
+          await loadUserWorkspaces();
+        }
+        const wsId = window.HuddleApi.getActiveWorkspaceId();
+        if (wsId && typeof loadWorkspaceChannels === 'function') {
           await loadWorkspaceChannels(wsId);
         }
+      } catch (err) {
+        console.error('Error refreshing on channel:invited:', err);
       }
     });
 
@@ -1471,8 +1515,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         try {
-          await window.HuddleApi.messages.send(channel.id, text);
-          // Socket broadcast will append the message smoothly
+          const sent = await window.HuddleApi.messages.send(channel.id, text);
+          if (sent && (sent.id || sent.content)) {
+            handleIncomingMessage(sent);
+          }
         } catch (err) {
           console.error('Failed to send message:', err);
           window.showHuddleToast(err.message || 'Failed to send message.', 'error');
@@ -2022,15 +2068,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- Mobile Drawer Helpers ---
   function openMobileDrawer() {
     if (!sidebar) return;
-    sidebar.classList.add('mobile-open');
-    if (drawerBackdrop) drawerBackdrop.classList.add('mobile-open');
+    sidebar.classList.add('open', 'mobile-open');
+    if (drawerBackdrop) drawerBackdrop.classList.add('show', 'mobile-open');
     document.body.style.overflow = 'hidden';
   }
 
   function closeMobileDrawer() {
     if (!sidebar) return;
-    sidebar.classList.remove('mobile-open');
-    if (drawerBackdrop) drawerBackdrop.classList.remove('mobile-open');
+    sidebar.classList.remove('open', 'mobile-open');
+    if (drawerBackdrop) drawerBackdrop.classList.remove('show', 'mobile-open');
     document.body.style.overflow = '';
   }
 

@@ -16,8 +16,6 @@ import { AuthService } from './auth.service.js';
 import { SignupDto } from './dto/signup.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
-import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
-import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CustomThrottlerGuard } from '../common/guards/throttler.guard.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
@@ -100,31 +98,5 @@ export class AuthController {
   })
   async logout(@CurrentUser('id') userId: string) {
     return this.authService.logout(userId);
-  }
-
-  @Post('forgot-password')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Initiate password reset flow' })
-  @ApiResponse({
-    status: 200,
-    description: 'Password reset instructions sent if email exists',
-  })
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.authService.forgotPassword(dto);
-  }
-
-  @Post('reset-password')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Complete password reset using reset token' })
-  @ApiResponse({
-    status: 200,
-    description: 'Password reset successfully',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid or expired reset token',
-  })
-  async resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.authService.resetPassword(dto);
   }
 }

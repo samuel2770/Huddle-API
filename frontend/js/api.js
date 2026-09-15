@@ -124,14 +124,47 @@
       }
       return true;
     },
+    async ensureAuthenticated(redirectUrl = 'signin.html') {
+      const token = this.getToken();
+      if (token && !this.isTokenLikelyExpired(token)) {
+        return true;
+      }
+      // Check if a refresh token is present to silently renew session
+      const refreshToken = this.getRefreshToken();
+      if (refreshToken) {
+        const refreshed = await this.tryRefreshToken();
+        if (refreshed) {
+          return true;
+        }
+      }
+      // Neither valid token nor refresh succeeded
+      this.clearSession();
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      }
+      return false;
+    },
     requireAuth(redirectUrl = 'signin.html') {
       const token = this.getToken();
-      if (!token || this.isTokenLikelyExpired(token)) {
-        this.clearSession();
-        window.location.href = redirectUrl;
-        return false;
+      if (token && !this.isTokenLikelyExpired(token)) {
+        return true;
       }
-      return true;
+      const refreshToken = this.getRefreshToken();
+      if (refreshToken) {
+        // Attempt silent refresh asynchronously without immediately breaking page flow
+        this.tryRefreshToken().then((ok) => {
+          if (!ok && redirectUrl) {
+            this.clearSession();
+            window.location.href = redirectUrl;
+          }
+        });
+        return true;
+      }
+      this.clearSession();
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      }
+      return false;
     },
     redirectIfAuthenticated(redirectUrl = 'dashboard.html') {
       if (this.isAuthenticated()) {
@@ -221,11 +254,18 @@
       if (!refreshToken) return false;
 
       try {
-        const res = await fetch(`${this.BASE_URL}/api/v1/auth/refresh`, {
+        let res = await fetch(`${this.BASE_URL}/api/v1/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken }),
         });
+        if (!res.ok && res.status === 404) {
+          res = await fetch(`${this.BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          });
+        }
         if (!res.ok) return false;
         const data = await res.json();
         const access = data.accessToken || data.data?.accessToken;

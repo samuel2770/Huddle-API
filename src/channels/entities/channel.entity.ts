@@ -8,6 +8,7 @@ import {
   OneToMany,
   JoinColumn,
   Unique,
+  Index,
   type Relation,
 } from 'typeorm';
 import { Workspace } from '../../workspaces/entities/workspace.entity.js';
@@ -22,7 +23,8 @@ export enum ChannelType {
 }
 
 @Entity('channels')
-@Unique(['workspace_id', 'name'])
+@Unique('uq_channels_workspace_name', ['workspace_id', 'name'])
+@Index('idx_channels_workspace_name', ['workspace_id', 'name'])
 export class Channel {
   @PrimaryGeneratedColumn('uuid')
   id: string;

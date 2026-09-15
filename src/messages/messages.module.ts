@@ -4,7 +4,6 @@ import { MessagesService } from './messages.service.js';
 import { MessagesController } from './messages.controller.js';
 import { Message } from './entities/message.entity.js';
 import { Attachment } from './entities/attachment.entity.js';
-import { MessageReaction } from './entities/message-reaction.entity.js';
 import { Channel } from '../channels/entities/channel.entity.js';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 import { ChatEventsModule } from '../gateway/chat-events.module.js';
@@ -16,7 +15,6 @@ import { ChatEventsModule } from '../gateway/chat-events.module.js';
       Attachment,
       Channel,
       ChannelMember,
-      MessageReaction,
     ]),
     ChatEventsModule,
   ],

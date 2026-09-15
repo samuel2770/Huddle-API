@@ -2226,6 +2226,201 @@ html, body {
 }
 .search-result-item:hover {
   background: #F9FAFB;
+/* Date Divider */
+.chat-date-divider {
+  display: flex;
+  align-items: center;
+  margin: 18px 0 10px;
+  position: relative;
+}
+.chat-date-divider::before,
+.chat-date-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #EAECF0;
+}
+.chat-date-divider-text {
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475467;
+  background: #ffffff;
+  border: 1px solid #EAECF0;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+/* Message Item Hover & Layout */
+.message-row {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+.message-row:hover {
+  background-color: #F9FAFB;
+}
+.message-row.is-grouped {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  margin-top: -8px;
+}
+.message-row.is-grouped .message-avatar-col {
+  visibility: hidden;
+  height: 0;
+}
+
+/* Hover Message Action Bar */
+.message-actions-toolbar {
+  position: absolute;
+  top: -14px;
+  right: 16px;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  background: #ffffff;
+  border: 1px solid #EAECF0;
+  border-radius: 8px;
+  padding: 2px 4px;
+  box-shadow: 0 4px 6px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+  z-index: 10;
+}
+.message-row:hover .message-actions-toolbar {
+  display: flex;
+}
+.message-action-btn {
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #667085;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s ease;
+}
+.message-action-btn:hover {
+  background: #F2F4F7;
+  color: #101828;
+}
+
+/* Reaction Chips */
+.message-reactions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid #EAECF0;
+  background: #F9FAFB;
+  font-size: 12px;
+  color: #344054;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+.reaction-chip:hover {
+  background: #F2F4F7;
+  border-color: #D0D5DD;
+}
+.reaction-chip.active {
+  background: #FFF4ED;
+  border-color: #FFB380;
+  color: #FF6A00;
+  font-weight: 600;
+}
+
+/* Typing Indicator Bar */
+.typing-bar {
+  min-height: 22px;
+  padding: 0 4px 4px;
+  font-size: 12px;
+  color: #667085;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.typing-dot {
+  width: 5px;
+  height: 5px;
+  background-color: #FF6A00;
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* Shimmer Skeletons */
+.skeleton-box {
+  background: linear-gradient(90deg, #F2F4F7 25%, #EAECF0 50%, #F2F4F7 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite;
+  border-radius: 6px;
+}
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Search Dropdown / Panel */
+.search-results-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #EAECF0;
+  border-radius: 12px;
+  box-shadow: 0 12px 24px -4px rgba(16, 24, 40, 0.15);
+  margin-top: 6px;
+  max-height: 380px;
+  overflow-y: auto;
+  z-index: 9999;
+  padding: 12px;
+  display: none;
+}
+.search-results-panel.open {
+  display: block;
+}
+.search-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #98A2B3;
+  text-transform: uppercase;
+  margin: 8px 0 4px;
+  letter-spacing: 0.5px;
+}
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+.search-result-item:hover {
+  background: #F9FAFB;
 }
 
 /* ==========================================================================
@@ -2252,7 +2447,10 @@ html, body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 4px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+    touch-action: manipulation;
   }
   
   /* Make app frame stack vertically */
@@ -2267,13 +2465,15 @@ html, body {
     left: -100%;
     width: 280px;
     height: 100%;
+    height: 100dvh;
     z-index: 9999;
     transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     background-color: var(--color-sidebar-bg);
   }
 
-  .dashboard-sidebar.open {
-    left: 0;
+  .dashboard-sidebar.open,
+  .dashboard-sidebar.mobile-open {
+    left: 0 !important;
   }
 
   .mobile-drawer-close-btn {
@@ -2284,8 +2484,11 @@ html, body {
     border: none;
     color: #94a3b8;
     cursor: pointer;
-    padding: 4px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
     margin-right: -4px;
+    touch-action: manipulation;
   }
 
   /* Backdrop for the sidebar drawer */
@@ -2295,6 +2498,7 @@ html, body {
     left: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
     background-color: rgba(16, 24, 40, 0.5);
     z-index: 9998;
     display: none;
@@ -2302,9 +2506,10 @@ html, body {
     transition: opacity 0.3s ease;
   }
 
-  .drawer-backdrop.show {
-    display: block;
-    opacity: 1;
+  .drawer-backdrop.show,
+  .drawer-backdrop.mobile-open {
+    display: block !important;
+    opacity: 1 !important;
   }
 
   /* Adjust Main View for mobile */

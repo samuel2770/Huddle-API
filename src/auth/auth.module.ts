@@ -7,9 +7,9 @@ import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RefreshToken } from './entities/refresh-token.entity.js';
-import { PasswordResetToken } from './entities/password-reset-token.entity.js';
 import { UsersModule } from '../users/users.module.js';
 import { MailModule } from '../mail/mail.module.js';
+import { WorkspacesModule } from '../workspaces/workspaces.module.js';
 
 @Module({
   imports: [
@@ -30,9 +30,10 @@ import { MailModule } from '../mail/mail.module.js';
         };
       },
     }),
-    TypeOrmModule.forFeature([RefreshToken, PasswordResetToken]),
+    TypeOrmModule.forFeature([RefreshToken]),
     UsersModule,
     MailModule,
+    WorkspacesModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtAuthGuard],
