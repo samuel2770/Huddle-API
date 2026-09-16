@@ -1185,6 +1185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const cId = item.dataset.channelId;
         searchResultsPanel.classList.remove('open');
         searchInput.value = '';
+        closeMobileDrawer();
         if (cId) {
           try {
             const ch = await window.HuddleApi.channels.get(cId);
@@ -1373,17 +1374,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       channelTitle = dmTeammate?.full_name || dmTeammate?.username || 'Direct Message';
     }
 
+    // Update mobile top bar title if present
+    const mobileTopTitle = document.getElementById('mobile-top-title');
+    if (mobileTopTitle) {
+      mobileTopTitle.innerHTML = `<span style="font-size:15px;font-weight:700;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(channelTitle)}</span>`;
+    }
+
     mainArea.innerHTML = `
       <div style="display:flex;flex-direction:column;height:100%;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;">
         <!-- Channel Header -->
-        <header style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <header style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;flex:1;">
+            <button type="button" class="channel-header-drawer-btn" style="display:none;align-items:center;justify-content:center;background:transparent;border:none;padding:6px;cursor:pointer;border-radius:8px;color:#101828;" title="Open channels menu" aria-label="Open channels menu">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
             <span style="display:inline-flex;padding:3px 8px;border-radius:6px;background:#FFF4ED;color:#FF6A00;font-size:12px;font-weight:700;">
               ${escapeHtml(window.HuddleApi.getActiveWorkspaceName() || 'Workspace')}
             </span>
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
               ${isDm ? `<span class="presence-dot ${dmTeammate?.id && onlineUsersSet.has(dmTeammate.id) ? 'online' : ''}" style="width:10px;height:10px;"></span>` : ''}
-              <span style="font-size:20px;font-weight:700;color:#101828;">${escapeHtml(channelTitle)}</span>
+              <span style="font-size:18px;font-weight:700;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(channelTitle)}</span>
             </div>
             ${channel.topic ? `<span style="font-size:13px;color:#667085;border-left:1px solid #EAECF0;padding-left:8px;">${escapeHtml(channel.topic)}</span>` : ''}
           </div>
@@ -1521,6 +1535,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     loadChannelMembers();
+
+    // Mobile in-header drawer trigger
+    const headerDrawerBtn = mainArea.querySelector('.channel-header-drawer-btn');
+    if (headerDrawerBtn) {
+      headerDrawerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openMobileDrawer();
+      });
+    }
 
     // Typing emission listener
     if (chatInput) {
@@ -2182,21 +2205,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- Mobile Drawer Helpers ---
   function openMobileDrawer() {
     if (!sidebar) return;
-    sidebar.classList.add('open', 'mobile-open');
-    if (drawerBackdrop) drawerBackdrop.classList.add('show', 'mobile-open');
+    sidebar.classList.add('open', 'mobile-open', 'drawer-open');
+    if (drawerBackdrop) drawerBackdrop.classList.add('show', 'mobile-open', 'active');
     document.body.style.overflow = 'hidden';
   }
 
   function closeMobileDrawer() {
     if (!sidebar) return;
-    sidebar.classList.remove('open', 'mobile-open');
-    if (drawerBackdrop) drawerBackdrop.classList.remove('show', 'mobile-open');
+    sidebar.classList.remove('open', 'mobile-open', 'drawer-open');
+    if (drawerBackdrop) drawerBackdrop.classList.remove('show', 'mobile-open', 'active');
     document.body.style.overflow = '';
   }
 
   if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileDrawer);
   if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeMobileDrawer);
   if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeMobileDrawer);
+
+  const mobileAvatarEl = document.querySelector('.mobile-avatar');
+  if (mobileAvatarEl) {
+    mobileAvatarEl.style.cursor = 'pointer';
+    mobileAvatarEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openProfileModal();
+    });
+  }
 
   // --- Logout ---
   if (sidebarLogoutBtn) {

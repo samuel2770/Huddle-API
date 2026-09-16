@@ -1229,24 +1229,33 @@ html, body {
    ========================================================================== */
 @media (max-width: 767.98px) {
   .dashboard-viewport-wrapper {
-    padding: 0;
-    min-height: 100vh;
-    min-height: 100dvh;
-    background-color: #ffffff;
-    justify-content: flex-start;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    background-color: #ffffff !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
+    position: fixed !important;
+    inset: 0 !important;
   }
 
   .mobile-top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    height: 56px;
-    padding: 0 16px;
-    background-color: #ffffff;
-    border-bottom: 1px solid var(--color-border-default);
-    flex-shrink: 0;
-    z-index: 40;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    height: 56px !important;
+    padding: 0 16px !important;
+    background-color: #ffffff !important;
+    border-bottom: 1px solid var(--color-border-default) !important;
+    flex-shrink: 0 !important;
+    z-index: 50 !important;
   }
 
   .mobile-menu-btn {
@@ -1254,14 +1263,18 @@ html, body {
     border: none;
     color: var(--color-primary-dark);
     cursor: pointer;
-    padding: 6px;
+    padding: 8px;
     border-radius: 8px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    min-width: 42px;
+    min-height: 42px;
+    touch-action: manipulation;
   }
 
-  .mobile-menu-btn:hover {
+  .mobile-menu-btn:hover,
+  .mobile-menu-btn:active {
     background-color: #f1f5f9;
   }
 
@@ -1274,63 +1287,93 @@ html, body {
   }
 
   .mobile-avatar {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background-color: var(--color-avatar-bg);
     color: var(--color-avatar-icon);
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    flex-shrink: 0;
   }
 
   .dashboard-app-frame {
-    width: 100%;
-    height: calc(100vh - 56px);
-    height: calc(100dvh - 56px);
-    max-height: none;
-    min-height: auto;
-    border-radius: 0;
-    border: none;
-    box-shadow: none;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 0% !important;
+    height: calc(100vh - 56px) !important;
+    height: calc(100dvh - 56px) !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background-color: #ffffff !important;
   }
 
   .drawer-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background-color: rgba(15, 23, 42, 0.55);
-    backdrop-filter: blur(2px);
-    z-index: 900;
+    position: fixed !important;
+    inset: 0 !important;
+    background-color: rgba(16, 24, 40, 0.6) !important;
+    backdrop-filter: blur(2px) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+    z-index: 9998 !important;
+    display: none !important;
+    opacity: 0 !important;
+    transition: opacity 0.22s ease !important;
   }
 
+  .drawer-backdrop.show,
+  .drawer-backdrop.mobile-open,
   .drawer-backdrop.active {
-    display: block;
-    animation: fadeIn 200ms ease forwards;
+    display: block !important;
+    opacity: 1 !important;
   }
 
   .dashboard-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    height: 100dvh;
-    width: 270px;
-    z-index: 1000;
-    transform: translateX(-100%);
-    transition: transform var(--transition-medium);
-    box-shadow: 12px 0 32px rgba(0, 0, 0, 0.28);
-    padding: 20px 16px 20px 16px;
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    width: 290px !important;
+    max-width: 85vw !important;
+    z-index: 9999 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 14px 0 36px rgba(0, 0, 0, 0.35) !important;
+    background-color: var(--color-sidebar-bg) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 18px 16px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
+  .dashboard-sidebar.open,
+  .dashboard-sidebar.mobile-open,
   .dashboard-sidebar.drawer-open {
-    transform: translateX(0);
+    transform: translateX(0) !important;
   }
 
   .mobile-drawer-close-btn {
-    display: flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
+    padding: 8px;
+    min-width: 40px;
+    min-height: 40px;
+    cursor: pointer;
+    touch-action: manipulation;
   }
 
   .workspace-popover {
@@ -1339,7 +1382,17 @@ html, body {
   }
 
   .dashboard-main {
-    padding: 24px 20px;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    flex: 1 1 0% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .channel-header-drawer-btn {
+    display: inline-flex !important;
   }
 
   .empty-state-heading {
@@ -2424,103 +2477,60 @@ html, body {
 }
 
 /* ==========================================================================
-   Mobile Responsive Overrides (< 768px)
+   Mobile Responsive Chat & Input Optimizations (< 768px)
    ========================================================================== */
 @media screen and (max-width: 768px) {
-  /* Show mobile top bar and enable drawer logic */
-  .mobile-top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background-color: var(--color-sidebar-bg);
-    color: #ffffff;
-    height: 56px;
-    flex-shrink: 0;
-  }
-  
-  .mobile-menu-btn, .mobile-search-btn {
-    background: transparent;
-    border: none;
-    color: #ffffff;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 44px;
-    min-height: 44px;
-    padding: 10px;
-    touch-action: manipulation;
-  }
-  
-  /* Make app frame stack vertically */
-  .dashboard-app-frame {
-    flex-direction: column;
+  /* Messages stream & row styling */
+  #messages-list {
+    width: 100% !important;
+    padding-bottom: 8px !important;
   }
 
-  /* Sidebar becomes an off-canvas drawer */
-  .dashboard-sidebar {
-    position: fixed;
-    top: 0;
-    left: -100%;
-    width: 280px;
-    height: 100%;
-    height: 100dvh;
-    z-index: 9999;
-    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    background-color: var(--color-sidebar-bg);
+  .message-row {
+    padding: 6px 4px !important;
+    gap: 10px !important;
   }
 
-  .dashboard-sidebar.open,
-  .dashboard-sidebar.mobile-open {
-    left: 0 !important;
+  .message-avatar-sm {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 13px !important;
   }
 
-  .mobile-drawer-close-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    cursor: pointer;
-    min-width: 44px;
-    min-height: 44px;
-    padding: 10px;
-    margin-right: -4px;
-    touch-action: manipulation;
+  .message-content-wrapper {
+    max-width: calc(100% - 44px) !important;
   }
 
-  /* Backdrop for the sidebar drawer */
-  .drawer-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    background-color: rgba(16, 24, 40, 0.5);
-    z-index: 9998;
-    display: none;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  .drawer-backdrop.show,
-  .drawer-backdrop.mobile-open {
-    display: block !important;
-    opacity: 1 !important;
-  }
-
-  /* Adjust Main View for mobile */
-  #dashboard-main {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  
+  /* Chat Composer Input */
   .chat-input-container {
-    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  #dashboard-main form#channel-chat-form {
+    padding: 8px 10px !important;
+    border-radius: 12px !important;
+    background: #F9FAFB !important;
+  }
+
+  .chat-form-input {
+    font-size: 14.5px !important;
+  }
+
+  /* Quick action buttons in chat input */
+  .chat-btn-action {
+    padding: 6px !important;
+  }
+
+  /* Modals on mobile: clean bottom sheets */
+  .modal-dialog-shell {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: auto 0 0 0 !important;
+  }
+
+  .modal-dialog-card {
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 88dvh !important;
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
