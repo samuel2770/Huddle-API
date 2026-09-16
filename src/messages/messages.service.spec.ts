@@ -10,8 +10,6 @@ import { Attachment } from './entities/attachment.entity.js';
 import { Channel } from '../channels/entities/channel.entity.js';
 import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 import { CreateMessageDto } from './dto/create-message.dto.js';
-
-import { MessageReaction } from './entities/message-reaction.entity.js';
 import { ChatEventsService } from '../gateway/chat-events.service.js';
 
 describe('MessagesService', () => {
@@ -30,14 +28,6 @@ describe('MessagesService', () => {
     save: vi.fn(),
   };
 
-  const mockReactionRepo = {
-    findOne: vi.fn(),
-    find: vi.fn(),
-    create: vi.fn(),
-    save: vi.fn(),
-    remove: vi.fn(),
-  };
-
   const mockChannelRepo = {
     findOne: vi.fn(),
   };
@@ -45,6 +35,7 @@ describe('MessagesService', () => {
   const mockMemberRepo = {
     findOne: vi.fn(),
     save: vi.fn(),
+    update: vi.fn().mockResolvedValue({ affected: 1 }),
     createQueryBuilder: vi.fn(),
   };
 
@@ -65,10 +56,6 @@ describe('MessagesService', () => {
         {
           provide: getRepositoryToken(Attachment),
           useValue: mockAttachmentRepo,
-        },
-        {
-          provide: getRepositoryToken(MessageReaction),
-          useValue: mockReactionRepo,
         },
         {
           provide: getRepositoryToken(Channel),

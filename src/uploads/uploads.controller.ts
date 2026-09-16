@@ -3,12 +3,17 @@ import {
   Post,
   Body,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { UploadsService } from './uploads.service.js';
 import { PresignRequestDto } from './dto/presign-request.dto.js';
@@ -32,4 +37,25 @@ export class UploadsController {
   ) {
     return this.uploadsService.generatePresignedUrl(userId, dto);
   }
+
+  @Post('file')
+  @ApiOperation({ summary: 'Upload a file or image directly' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 201, description: 'File uploaded successfully' })
+  @ApiResponse({ status: 400, description: 'No file provided' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit
+    }),
+  )
+  async uploadFile(
+    @CurrentUser('id') userId: string,
+    @UploadedFile() file: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    return this.uploadsService.saveLocalFile(userId, file);
+  }
 }
+

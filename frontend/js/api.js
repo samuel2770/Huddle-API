@@ -480,9 +480,15 @@
         return ApiClient.request(`/channels/${channelId}/messages?limit=${limit}`);
       },
 
-      async send(channelId, content, replyToMessageId = null) {
-        const body = { content: content.trim() };
+      async send(channelId, content, replyToMessageId = null, attachments = null) {
+        const body = {};
+        if (content && typeof content === 'string' && content.trim()) {
+          body.content = content.trim();
+        }
         if (replyToMessageId) body.replyToMessageId = replyToMessageId;
+        if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+          body.attachments = attachments;
+        }
         return ApiClient.request(`/channels/${channelId}/messages`, {
           method: 'POST',
           body,
@@ -512,6 +518,17 @@
       async markRead(channelId, messageId) {
         return ApiClient.request(`/channels/${channelId}/messages/${messageId}/read`, {
           method: 'PATCH',
+        });
+      },
+    },
+
+    uploads: {
+      async uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        return ApiClient.request('/uploads/file', {
+          method: 'POST',
+          body: formData,
         });
       },
     },

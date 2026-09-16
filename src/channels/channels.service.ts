@@ -380,7 +380,7 @@ export class ChannelsService {
     const saved = await this.memberRepository.save(member);
     saved.user = targetUser;
 
-    // Post Slack-style announcement message in the channel
+    // Post notification announcement message in the channel & broadcast in real-time
     try {
       const userRepo = this.dataSource.getRepository(User);
       const caller = await userRepo.findOne({ where: { id: callerId } });
@@ -391,13 +391,36 @@ export class ChannelsService {
       const announcement = messageRepo.create({
         channel_id: channelId,
         sender_id: callerId,
-        content: `${targetHandle} was added to #${channel.name} by ${callerHandle}.`,
+        content: `👋 ${callerHandle} added ${targetHandle} to #${channel.name}.`,
         is_edited: false,
         is_deleted: false,
       });
-      await messageRepo.save(announcement);
-    } catch {
-      // Non-blocking
+      const savedAnnouncement = await messageRepo.save(announcement);
+      const fullAnnouncement = await messageRepo.findOne({
+        where: { id: savedAnnouncement.id },
+        relations: { sender: true, attachments: true },
+      });
+
+      const broadcastPayload = {
+        ...(fullAnnouncement || savedAnnouncement),
+        message: fullAnnouncement || savedAnnouncement,
+        channelId,
+        channel_id: channelId,
+      };
+
+      // Broadcast message to channel room so all group members see the announcement immediately
+      this.chatEventsService.broadcastToChannel(channelId, 'message:new', broadcastPayload);
+
+      // Broadcast member joined notification to the channel room
+      this.chatEventsService.broadcastToChannel(channelId, 'channel:member_joined', {
+        channelId,
+        member: saved,
+        addedBy: caller,
+        targetUser,
+        notificationText: `${callerHandle} added ${targetHandle} to #${channel.name}`,
+      });
+    } catch (err) {
+      console.error('[AddMember Announcement Error]:', err);
     }
 
     // Broadcast channel invite to the target user via WebSocket
@@ -512,11 +535,33 @@ export class ChannelsService {
           const announcement = messageRepo.create({
             channel_id: channelId,
             sender_id: callerId,
-            content: `${targetHandle} was added to #${channel.name} by ${callerHandle}.`,
+            content: `👋 ${callerHandle} added ${targetHandle} to #${channel.name}.`,
             is_edited: false,
             is_deleted: false,
           });
-          await messageRepo.save(announcement);
+          const savedAnnouncement = await messageRepo.save(announcement);
+          const fullAnnouncement = await messageRepo.findOne({
+            where: { id: savedAnnouncement.id },
+            relations: { sender: true, attachments: true },
+          });
+
+          const broadcastPayload = {
+            ...(fullAnnouncement || savedAnnouncement),
+            message: fullAnnouncement || savedAnnouncement,
+            channelId,
+            channel_id: channelId,
+          };
+
+          // Broadcast real-time message notification to the channel
+          this.chatEventsService.broadcastToChannel(channelId, 'message:new', broadcastPayload);
+
+          // Broadcast member joined event to the channel room
+          this.chatEventsService.broadcastToChannel(channelId, 'channel:member_joined', {
+            channelId,
+            userId: addedId,
+            addedBy: caller,
+            notificationText: `${callerHandle} added ${targetHandle} to #${channel.name}`,
+          });
 
           // Broadcast channel invite to the newly added user
           this.chatEventsService.broadcastToUser(addedId, 'channel:invited', {

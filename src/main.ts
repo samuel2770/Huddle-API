@@ -7,7 +7,8 @@ if (typeof process.loadEnvFile === 'function') {
 
 import helmet from 'helmet';
 import compression from 'compression';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -37,12 +38,23 @@ async function bootstrap() {
     }),
   );
 
+  // Serve static frontend assets
   app.useStaticAssets(join(process.cwd(), 'frontend'), {
     extensions: ['html'],
   });
   app.useStaticAssets(join(process.cwd(), 'frontend'), {
     prefix: '/frontend/',
     extensions: ['html'],
+  });
+
+  // Serve uploaded images & files
+  const rawUploadDir = process.env.LOCAL_UPLOAD_DIR || join(process.cwd(), 'uploads');
+  const uploadDir = resolve(rawUploadDir);
+  if (!existsSync(uploadDir)) {
+    mkdirSync(uploadDir, { recursive: true });
+  }
+  app.useStaticAssets(uploadDir, {
+    prefix: '/uploads/',
   });
 
   const frontendUrl = process.env.FRONTEND_URL;

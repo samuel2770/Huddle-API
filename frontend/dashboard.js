@@ -246,6 +246,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
+    socket.on('channel:member_joined', async (payload) => {
+      const cId = payload?.channelId || payload?.channel_id;
+      if (activeChannel && activeChannel.id === cId) {
+        if (payload?.notificationText) {
+          window.showHuddleToast(payload.notificationText, 'info');
+        }
+        // Refresh channel members count pill in channel header
+        const textEl = document.getElementById('channel-members-count-text');
+        if (textEl && window.HuddleApi?.channels?.getMembers) {
+          try {
+            const members = await window.HuddleApi.channels.getMembers(activeChannel.id);
+            if (Array.isArray(members)) {
+              currentChannelMembers = members;
+              textEl.textContent = `${members.length} Member${members.length === 1 ? '' : 's'}`;
+              updateAllPresenceDots();
+            }
+          } catch {}
+        }
+      }
+    });
+
     window.huddleSocket = socket;
   }
 
@@ -299,12 +320,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Temporary: Multi-workspace switching paused for now
-  const PAUSE_WORKSPACE_SWITCHING = true;
-
   // --- Workspace Popover Logic ---
   function togglePopover(forceState) {
-    if (PAUSE_WORKSPACE_SWITCHING) return;
     if (!workspacePopover || !switcherTrigger) return;
     const shouldOpen =
       typeof forceState === 'boolean'
@@ -326,7 +343,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function refreshWorkspacesList() {
-    if (PAUSE_WORKSPACE_SWITCHING) return;
     try {
       if (!window.HuddleApi || !window.HuddleApi.workspaces) return;
       const workspaces = await window.HuddleApi.workspaces.list();
@@ -344,14 +360,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (switcherTrigger) {
-    if (PAUSE_WORKSPACE_SWITCHING) {
-      switcherTrigger.style.cursor = 'default';
-      const chevron = switcherTrigger.querySelector('.switcher-chevron');
-      if (chevron) chevron.style.display = 'none';
-    }
+    switcherTrigger.style.cursor = 'pointer';
+    const chevron = switcherTrigger.querySelector('.switcher-chevron');
+    if (chevron) chevron.style.display = '';
     switcherTrigger.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (PAUSE_WORKSPACE_SWITCHING) return;
       togglePopover();
     });
   }
@@ -1385,14 +1398,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <!-- Channel Header -->
         <header style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;flex:1;">
-            <button type="button" class="channel-header-drawer-btn" style="display:none;align-items:center;justify-content:center;background:transparent;border:none;padding:6px;cursor:pointer;border-radius:8px;color:#101828;" title="Open channels menu" aria-label="Open channels menu">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-              </svg>
-            </button>
-            <span style="display:inline-flex;padding:3px 8px;border-radius:6px;background:#FFF4ED;color:#FF6A00;font-size:12px;font-weight:700;">
+            <span class="channel-header-workspace-badge" style="display:inline-flex;padding:3px 8px;border-radius:6px;background:#FFF4ED;color:#FF6A00;font-size:12px;font-weight:700;">
               ${escapeHtml(window.HuddleApi.getActiveWorkspaceName() || 'Workspace')}
             </span>
             <div style="display:flex;align-items:center;gap:8px;min-width:0;">
@@ -1465,20 +1471,105 @@ document.addEventListener('DOMContentLoaded', async () => {
         </div>
 
         <!-- Composer Area with Typing Indicator -->
-        <div style="padding:10px 24px 20px;border-top:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
+        <div class="chat-composer-outer-wrapper" style="padding:10px 24px 20px;border-top:1px solid #EAECF0;background:#ffffff;flex-shrink:0;position:relative;">
           <div id="typing-indicator-bar" class="typing-bar"></div>
-          <form id="channel-chat-form" style="display:flex;align-items:center;gap:10px;background:#F9FAFB;border:1px solid #D0D5DD;border-radius:12px;padding:8px 12px;transition:border-color 0.15s ease;">
+
+          <!-- Staged Attachment Preview Chip -->
+          <div id="chat-attachment-preview-bar" class="chat-attachment-preview-bar" style="display:none;">
+            <div class="chat-attachment-preview-thumb-wrap">
+              <img id="chat-attachment-preview-img" src="" alt="Preview" />
+            </div>
+            <div class="chat-attachment-preview-info">
+              <span id="chat-attachment-preview-name" class="chat-attachment-preview-name">image.png</span>
+              <span id="chat-attachment-preview-size" class="chat-attachment-preview-size">0 KB</span>
+            </div>
+            <button type="button" id="chat-attachment-remove-btn" class="chat-attachment-remove-btn" title="Remove attachment" aria-label="Remove attachment">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Floating Classic Emoji Popover -->
+          <div id="chat-emoji-popover" class="chat-emoji-popover" style="display:none;" role="dialog" aria-label="Emoji Picker">
+            <!-- Search Header -->
+            <div class="chat-emoji-search-wrap">
+              <svg class="chat-emoji-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="chat-emoji-search-input" class="chat-emoji-search-input" placeholder="Search emoji..." autocomplete="off" />
+              <button type="button" id="chat-emoji-close-btn" class="chat-emoji-close-btn" title="Close emoji picker">&times;</button>
+            </div>
+
+            <!-- Category Navigation Tabs -->
+            <div class="chat-emoji-tabs-bar" id="chat-emoji-tabs-bar"></div>
+
+            <!-- Scrollable Emoji Grid Body -->
+            <div class="chat-emoji-body" id="chat-emoji-body"></div>
+
+            <!-- Classic Footer with Live Preview -->
+            <div class="chat-emoji-footer" id="chat-emoji-footer">
+              <span id="chat-emoji-preview-char" class="chat-emoji-preview-char">😀</span>
+              <div class="chat-emoji-preview-text">
+                <span id="chat-emoji-preview-name" class="chat-emoji-preview-name">:grinning:</span>
+                <span id="chat-emoji-preview-sub" class="chat-emoji-preview-sub">Grinning Face</span>
+              </div>
+            </div>
+          </div>
+
+          <form id="channel-chat-form" class="channel-chat-form" style="display:flex;align-items:center;gap:8px;background:#F9FAFB;border:1px solid #D0D5DD;border-radius:12px;padding:6px 10px;transition:border-color 0.15s ease;">
+            
+            <!-- Left Tools (Image Attachment + Emoji) -->
+            <div style="display:flex;align-items:center;gap:2px;">
+              <!-- Add Image Button -->
+              <button
+                type="button"
+                id="chat-attach-btn"
+                class="chat-composer-tool-btn"
+                title="Add image"
+                aria-label="Add image"
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+              </button>
+              <input type="file" id="channel-chat-file-input" accept="image/*" style="display:none;" />
+
+              <!-- Add Emoji Button -->
+              <button
+                type="button"
+                id="chat-emoji-btn"
+                class="chat-composer-tool-btn"
+                title="Add emoji"
+                aria-label="Add emoji"
+              >
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                  <line x1="9" y1="9" x2="9.01" y2="9" stroke-width="2.6"></line>
+                  <line x1="15" y1="9" x2="15.01" y2="9" stroke-width="2.6"></line>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Input Box -->
             <input
               type="text"
               id="channel-chat-input"
               placeholder="${isDm ? `Message ${escapeHtml(channelTitle)}...` : `Message #${escapeHtml(channel.name)}...`}"
               autocomplete="off"
-              style="flex:1;border:none;background:transparent;outline:none;font-size:14px;color:#101828;padding:4px 6px;"
+              style="flex:1;border:none;background:transparent;outline:none;font-size:14px;color:#101828;padding:6px 4px;"
             />
+
+            <!-- Send Button -->
             <button
               type="submit"
               id="channel-chat-send-btn"
-              style="background:#FF6A00;color:#ffffff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background 0.15s ease;"
+              style="background:#FF6A00;color:#ffffff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background 0.15s ease;flex-shrink:0;"
             >
               <span>Send</span>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1499,8 +1590,526 @@ document.addEventListener('DOMContentLoaded', async () => {
     const membersCountBtn = document.getElementById('channel-members-count-btn');
     const membersCountText = document.getElementById('channel-members-count-text');
 
+    // Composer elements
+    let stagedImageFile = null;
+    const attachBtn = document.getElementById('chat-attach-btn');
+    const fileInput = document.getElementById('channel-chat-file-input');
+    const previewBar = document.getElementById('chat-attachment-preview-bar');
+    const previewImg = document.getElementById('chat-attachment-preview-img');
+    const previewName = document.getElementById('chat-attachment-preview-name');
+    const previewSize = document.getElementById('chat-attachment-preview-size');
+    const removeAttachmentBtn = document.getElementById('chat-attachment-remove-btn');
+    const emojiBtn = document.getElementById('chat-emoji-btn');
+    const emojiPopover = document.getElementById('chat-emoji-popover');
+    const emojiBody = document.getElementById('chat-emoji-body');
+    const emojiCloseBtn = document.getElementById('chat-emoji-close-btn');
+    const emojiSearchInput = document.getElementById('chat-emoji-search-input');
+    const emojiTabsBar = document.getElementById('chat-emoji-tabs-bar');
+    const emojiPreviewChar = document.getElementById('chat-emoji-preview-char');
+    const emojiPreviewName = document.getElementById('chat-emoji-preview-name');
+    const emojiPreviewSub = document.getElementById('chat-emoji-preview-sub');
+
+    // Classic Emoji Catalog
+    const CLASSIC_EMOJI_CATEGORIES = [
+      {
+        id: 'smileys',
+        icon: '😀',
+        name: 'Smileys & Emotion',
+        items: [
+          { e: '😀', n: 'grinning face', k: 'smile happy joy' },
+          { e: '😃', n: 'grinning face big eyes', k: 'happy joy smile' },
+          { e: '😄', n: 'grinning smiling eyes', k: 'happy joy smile' },
+          { e: '😁', n: 'beaming face', k: 'grin teeth' },
+          { e: '😆', n: 'grinning squinting', k: 'laugh haha' },
+          { e: '😅', n: 'face with sweat', k: 'nervous relief' },
+          { e: '🤣', n: 'rolling laughing', k: 'rofl lol haha' },
+          { e: '😂', n: 'tears of joy', k: 'cry laugh haha lol' },
+          { e: '🙂', n: 'slightly smiling', k: 'smile' },
+          { e: '🙃', n: 'upside-down face', k: 'silly sarcastic' },
+          { e: '😉', n: 'winking face', k: 'wink flirt' },
+          { e: '😊', n: 'smiling blushing', k: 'blush smile' },
+          { e: '😇', n: 'smiling with halo', k: 'angel innocent' },
+          { e: '🥰', n: 'smiling with hearts', k: 'love adore affection' },
+          { e: '😍', n: 'heart eyes', k: 'love crush' },
+          { e: '🤩', n: 'star-struck', k: 'excited star eyes' },
+          { e: '😘', n: 'blowing kiss', k: 'kiss love' },
+          { e: '😋', n: 'savoring food', k: 'yum delicious' },
+          { e: '😜', n: 'winking with tongue', k: 'crazy silly' },
+          { e: '🤪', n: 'zany face', k: 'goofy wild' },
+          { e: '🤑', n: 'money mouth', k: 'rich cash dollar' },
+          { e: '🤗', n: 'hugging face', k: 'hug embrace' },
+          { e: '🤫', n: 'shushing face', k: 'quiet silence' },
+          { e: '🤔', n: 'thinking face', k: 'ponder doubt hmm' },
+          { e: '🤐', n: 'zipper mouth', k: 'secret silent' },
+          { e: '😏', n: 'smirking face', k: 'smug cheeky' },
+          { e: '😒', n: 'unamused face', k: 'bored meh' },
+          { e: '🙄', n: 'rolling eyes', k: 'eyeroll whatever' },
+          { e: '😬', n: 'grimacing face', k: 'awkward eek' },
+          { e: '😌', n: 'relieved face', k: 'peace calm' },
+          { e: '😴', n: 'sleeping face', k: 'zzz sleep tired' },
+          { e: '😷', n: 'medical mask', k: 'sick health' },
+          { e: '🥵', n: 'hot face', k: 'heat summer sweat' },
+          { e: '🥶', n: 'cold face', k: 'winter freeze ice' },
+          { e: '🤯', n: 'exploding head', k: 'mind blown shock' },
+          { e: '🥳', n: 'partying face', k: 'celebrate birthday' },
+          { e: '😎', n: 'sunglasses', k: 'cool chill rad' },
+          { e: '🤓', n: 'nerd face', k: 'geek glasses smart' },
+          { e: '🧐', n: 'face with monocle', k: 'fancy inspect' },
+          { e: '🥺', n: 'pleading face', k: 'puppy eyes please' },
+          { e: '😢', n: 'crying face', k: 'tear sad upset' },
+          { e: '😭', n: 'loudly crying', k: 'sob heartbroken' },
+          { e: '😱', n: 'screaming in fear', k: 'scream terror omg' },
+          { e: '😡', n: 'pouting angry', k: 'mad rage red' },
+          { e: '🤬', n: 'cursing face', k: 'swear angry mad' },
+          { e: '💀', n: 'skull', k: 'dead lol dying' },
+          { e: '💩', n: 'pile of poo', k: 'poop funny' },
+          { e: '🤡', n: 'clown face', k: 'circus fool' },
+          { e: '👻', n: 'ghost', k: 'spooky halloween' },
+          { e: '👽', n: 'alien', k: 'ufo extraterrestrial' },
+          { e: '🤖', n: 'robot', k: 'bot ai android' },
+        ],
+      },
+      {
+        id: 'people',
+        icon: '👋',
+        name: 'People & Gestures',
+        items: [
+          { e: '👋', n: 'waving hand', k: 'wave hello goodbye' },
+          { e: '🖐️', n: 'hand splayed', k: 'high five five' },
+          { e: '✋', n: 'raised hand', k: 'stop high five' },
+          { e: '🖖', n: 'vulcan salute', k: 'spock peace' },
+          { e: '👌', n: 'OK hand', k: 'perfect ok good' },
+          { e: '🤌', n: 'pinched fingers', k: 'italian chef gesture' },
+          { e: '🤏', n: 'pinching hand', k: 'small little bit' },
+          { e: '✌️', n: 'victory peace', k: 'peace two win' },
+          { e: '🤞', n: 'crossed fingers', k: 'luck hope wish' },
+          { e: '🤟', n: 'love you gesture', k: 'ily love' },
+          { e: '🤘', n: 'sign of horns', k: 'rock metal' },
+          { e: '🤙', n: 'call me', k: 'shaka phone hang loose' },
+          { e: '👈', n: 'pointing left', k: 'point left' },
+          { e: '👉', n: 'pointing right', k: 'point right' },
+          { e: '👆', n: 'pointing up', k: 'point up' },
+          { e: '👇', n: 'pointing down', k: 'point down' },
+          { e: '👍', n: 'thumbs up', k: 'like agree yes approve good' },
+          { e: '👎', n: 'thumbs down', k: 'dislike bad no' },
+          { e: '✊', n: 'raised fist', k: 'power solidarity' },
+          { e: '👊', n: 'oncoming fist', k: 'punch fist bump' },
+          { e: '🤛', n: 'left fist', k: 'fist bump' },
+          { e: '🤜', n: 'right fist', k: 'fist bump' },
+          { e: '👏', n: 'clapping hands', k: 'applause bravo praise' },
+          { e: '🙌', n: 'raising hands', k: 'celebrate hooray praise' },
+          { e: '🤝', n: 'handshake', k: 'deal agreement meet partner' },
+          { e: '🙏', n: 'folded hands', k: 'please thank you pray namaste' },
+          { e: '✍️', n: 'writing hand', k: 'write note sign' },
+          { e: '💪', n: 'flexed biceps', k: 'strong muscle fitness power' },
+          { e: '👀', n: 'eyes', k: 'look see watch inspect' },
+          { e: '👁️', n: 'eye', k: 'look vision see' },
+          { e: '🧠', n: 'brain', k: 'smart idea intelligence' },
+        ],
+      },
+      {
+        id: 'animals',
+        icon: '🐶',
+        name: 'Animals & Nature',
+        items: [
+          { e: '🐶', n: 'dog', k: 'puppy pet bark' },
+          { e: '🐱', n: 'cat', k: 'kitten pet meow' },
+          { e: '🐭', n: 'mouse', k: 'rodent' },
+          { e: '🐰', n: 'rabbit', k: 'bunny pet' },
+          { e: '🦊', n: 'fox', k: 'animal clever' },
+          { e: '🐻', n: 'bear', k: 'grizzly wild' },
+          { e: '🐼', n: 'panda', k: 'bear china' },
+          { e: '🐨', n: 'koala', k: 'australia' },
+          { e: '🦁', n: 'lion', k: 'king wild roar' },
+          { e: '🐮', n: 'cow', k: 'milk farm moo' },
+          { e: '🐷', n: 'pig', k: 'oink farm' },
+          { e: '🐸', n: 'frog', k: 'pond amphibian' },
+          { e: '🐵', n: 'monkey', k: 'primate jungle' },
+          { e: '🐔', n: 'chicken', k: 'poultry rooster farm' },
+          { e: '🐧', n: 'penguin', k: 'antarctic bird' },
+          { e: '🐦', n: 'bird', k: 'fly tweet' },
+          { e: '🦉', n: 'owl', k: 'wise night bird' },
+          { e: '🐺', n: 'wolf', k: 'howl pack wild' },
+          { e: '🦄', n: 'unicorn', k: 'magic fantasy horse' },
+          { e: '🐝', n: 'honeybee', k: 'bee honey sting' },
+          { e: '🦋', n: 'butterfly', k: 'wings insect pretty' },
+          { e: '🌸', n: 'cherry blossom', k: 'flower pink spring' },
+          { e: '🌹', n: 'rose', k: 'flower red romantic love' },
+          { e: '🌻', n: 'sunflower', k: 'flower yellow summer' },
+          { e: '🌱', n: 'seedling', k: 'plant sprout grow' },
+          { e: '🌲', n: 'evergreen tree', k: 'pine forest nature' },
+          { e: '🌴', n: 'palm tree', k: 'beach tropical summer' },
+          { e: '🍀', n: 'four leaf clover', k: 'luck irish shamrock' },
+        ],
+      },
+      {
+        id: 'food',
+        icon: '🍔',
+        name: 'Food & Drink',
+        items: [
+          { e: '🍎', n: 'red apple', k: 'fruit healthy' },
+          { e: '🍌', n: 'banana', k: 'fruit yellow' },
+          { e: '🍉', n: 'watermelon', k: 'fruit summer' },
+          { e: '🍇', n: 'grapes', k: 'fruit wine' },
+          { e: '🍓', n: 'strawberry', k: 'berry fruit red' },
+          { e: '🥑', n: 'avocado', k: 'healthy guacamole' },
+          { e: '🍕', n: 'pizza', k: 'cheese italian slice' },
+          { e: '🍔', n: 'hamburger', k: 'burger beef fast food' },
+          { e: '🍟', n: 'french fries', k: 'fries potato fast food' },
+          { e: '🌭', n: 'hot dog', k: 'sausage fast food' },
+          { e: '🌮', n: 'taco', k: 'mexican food' },
+          { e: '🍜', n: 'ramen', k: 'noodles soup asian' },
+          { e: '🍣', n: 'sushi', k: 'japanese fish rice' },
+          { e: '🍦', n: 'ice cream', k: 'dessert sweet cone' },
+          { e: '🍰', n: 'shortcake', k: 'cake sweet dessert' },
+          { e: '🍩', n: 'doughnut', k: 'donut sweet pastry' },
+          { e: '🍪', n: 'cookie', k: 'chocolate snack sweet' },
+          { e: '🍿', n: 'popcorn', k: 'movie snack cinema' },
+          { e: '☕', n: 'coffee', k: 'tea cafe morning drink' },
+          { e: '🍵', n: 'tea', k: 'green tea matcha' },
+          { e: '🥤', n: 'soda', k: 'drink cup straw' },
+          { e: '🍺', n: 'beer', k: 'beer pub alcohol drink' },
+          { e: '🍻', n: 'cheers beers', k: 'pub alcohol drink party' },
+          { e: '🍷', n: 'wine', k: 'red wine alcohol drink' },
+          { e: '🥂', n: 'clinking glasses', k: 'champagne celebrate toast' },
+        ],
+      },
+      {
+        id: 'activity',
+        icon: '⚽',
+        name: 'Activities & Sports',
+        items: [
+          { e: '⚽', n: 'soccer ball', k: 'football sport match' },
+          { e: '🏀', n: 'basketball', k: 'hoop nba sport' },
+          { e: '🏈', n: 'american football', k: 'nfl superbowl sport' },
+          { e: '⚾', n: 'baseball', k: 'sport bat' },
+          { e: '🎾', n: 'tennis', k: 'sport court racket' },
+          { e: '🏐', n: 'volleyball', k: 'sport beach' },
+          { e: '🎱', n: 'pool 8 ball', k: 'billiards game eight' },
+          { e: '🏓', n: 'ping pong', k: 'table tennis' },
+          { e: '🥊', n: 'boxing glove', k: 'fight sport ring' },
+          { e: '🎯', n: 'bullseye', k: 'target dart goal' },
+          { e: '🎮', n: 'video game', k: 'controller gaming xbox playstation' },
+          { e: '🎲', n: 'game die', k: 'dice board game roll' },
+          { e: '🏆', n: 'trophy', k: 'winner prize first champion' },
+          { e: '🥇', n: '1st place medal', k: 'gold first prize winner' },
+          { e: '🥈', n: '2nd place medal', k: 'silver prize second' },
+          { e: '🥉', n: '3rd place medal', k: 'bronze prize third' },
+          { e: '🎨', n: 'palette', k: 'paint art draw creative' },
+          { e: '🎬', n: 'clapper board', k: 'film movie cinema' },
+          { e: '🎤', n: 'microphone', k: 'sing music podcast' },
+          { e: '🎧', n: 'headphone', k: 'music audio listen sound' },
+          { e: '🎸', n: 'guitar', k: 'rock acoustic music' },
+        ],
+      },
+      {
+        id: 'travel',
+        icon: '🚀',
+        name: 'Travel & Places',
+        items: [
+          { e: '🚗', n: 'car', k: 'vehicle drive ride' },
+          { e: '🚕', n: 'taxi', k: 'cab ride yellow' },
+          { e: '🚌', n: 'bus', k: 'transit vehicle' },
+          { e: '🏎️', n: 'racing car', k: 'f1 speed race' },
+          { e: '🚓', n: 'police car', k: 'cop siren 911' },
+          { e: '🚲', n: 'bicycle', k: 'bike cycling ride' },
+          { e: '✈️', n: 'airplane', k: 'flight travel fly airport' },
+          { e: '🚀', n: 'rocket', k: 'space launch blastoff moon' },
+          { e: '🛸', n: 'flying saucer', k: 'ufo alien space' },
+          { e: '⛵', n: 'sailboat', k: 'boat sea water ocean' },
+          { e: '🏖️', n: 'beach', k: 'vacation umbrella summer sea' },
+          { e: '🏕️', n: 'camping', k: 'tent forest campfire' },
+          { e: '🏔️', n: 'mountain', k: 'peak snow climb' },
+          { e: '🏠', n: 'house', k: 'home building' },
+          { e: '🏢', n: 'office building', k: 'work company building' },
+          { e: '🗽', n: 'Statue of Liberty', k: 'nyc new york america' },
+        ],
+      },
+      {
+        id: 'objects',
+        icon: '💡',
+        name: 'Objects',
+        items: [
+          { e: '💻', n: 'laptop', k: 'computer tech mac pc coding work' },
+          { e: '🖥️', n: 'desktop computer', k: 'screen monitor pc tech' },
+          { e: '📱', n: 'mobile phone', k: 'smartphone iphone call' },
+          { e: '⌨️', n: 'keyboard', k: 'typing tech' },
+          { e: '💡', n: 'light bulb', k: 'idea insight smart bright solution' },
+          { e: '📖', n: 'open book', k: 'read learn study' },
+          { e: '📝', n: 'memo', k: 'note write paper document' },
+          { e: '📌', n: 'pushpin', k: 'pin location notice' },
+          { e: '📍', n: 'round pushpin', k: 'map location here' },
+          { e: '📎', n: 'paperclip', k: 'attach office document' },
+          { e: '🔑', n: 'key', k: 'lock password access secret' },
+          { e: '🔒', n: 'locked', k: 'secure private safe' },
+          { e: '🔔', n: 'bell', k: 'notification alert ring' },
+          { e: '📦', n: 'package', k: 'box parcel delivery' },
+          { e: '🎁', n: 'gift', k: 'present birthday surprise' },
+          { e: '🎉', n: 'party popper', k: 'tada celebrate congrats party' },
+          { e: '🎈', n: 'balloon', k: 'birthday float party' },
+          { e: '✉️', n: 'envelope', k: 'letter mail message' },
+          { e: '📅', n: 'calendar', k: 'date schedule day event' },
+          { e: '⏰', n: 'alarm clock', k: 'time morning' },
+          { e: '💰', n: 'money bag', k: 'dollar rich cash' },
+          { e: '💎', n: 'gem stone', k: 'diamond jewel luxury' },
+        ],
+      },
+      {
+        id: 'symbols',
+        icon: '❤️',
+        name: 'Symbols & Hearts',
+        items: [
+          { e: '❤️', n: 'red heart', k: 'love affection passion favorite' },
+          { e: '🧡', n: 'orange heart', k: 'love warmth' },
+          { e: '💛', n: 'yellow heart', k: 'love friendship happy' },
+          { e: '💚', n: 'green heart', k: 'love nature eco' },
+          { e: '💙', n: 'blue heart', k: 'love calm peace trust' },
+          { e: '💜', n: 'purple heart', k: 'love royal luxury' },
+          { e: '🖤', n: 'black heart', k: 'love dark gothic' },
+          { e: '🤍', n: 'white heart', k: 'love pure peace' },
+          { e: '💔', n: 'broken heart', k: 'heartbreak sad分手' },
+          { e: '💕', n: 'two hearts', k: 'love sweet affection' },
+          { e: '💖', n: 'sparkling heart', k: 'love magic special glitter' },
+          { e: '🔥', n: 'fire', k: 'flame hot lit trendy burn' },
+          { e: '✨', n: 'sparkles', k: 'stars magic shine clean new' },
+          { e: '⭐', n: 'star', k: 'favorite gold night' },
+          { e: '🌟', n: 'glowing star', k: 'shine bright highlight' },
+          { e: '⚡', n: 'high voltage', k: 'lightning bolt zap energy fast' },
+          { e: '💥', n: 'collision', k: 'boom bang explosion pop' },
+          { e: '💯', n: 'hundred points', k: '100 perfect score keep it real' },
+          { e: '✅', n: 'check mark', k: 'yes done complete correct ok' },
+          { e: '❌', n: 'cross mark', k: 'no wrong cancel delete' },
+          { e: '⚠️', n: 'warning', k: 'caution alert danger' },
+          { e: '❓', n: 'question mark', k: 'what help wonder ask' },
+          { e: '❗', n: 'exclamation mark', k: 'important alert notice' },
+        ],
+      },
+    ];
+
+    let activeCategoryTab = 'smileys';
+
+    function renderClassicTabs() {
+      if (!emojiTabsBar) return;
+      emojiTabsBar.innerHTML = CLASSIC_EMOJI_CATEGORIES.map(
+        (cat) => `
+          <button type="button" class="chat-emoji-tab-btn ${cat.id === activeCategoryTab ? 'active' : ''}" data-cat-id="${cat.id}" title="${escapeHtml(cat.name)}">
+            ${cat.icon}
+          </button>
+        `,
+      ).join('');
+
+      emojiTabsBar.querySelectorAll('.chat-emoji-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const catId = btn.dataset.catId;
+          activeCategoryTab = catId;
+          emojiTabsBar.querySelectorAll('.chat-emoji-tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.catId === catId));
+          const targetSection = document.getElementById(`emoji-sec-${catId}`);
+          if (targetSection && emojiBody) {
+            targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+    }
+
+    function renderClassicEmojiBody(filterQuery = '') {
+      if (!emojiBody) return;
+      const q = filterQuery.toLowerCase().trim();
+
+      if (!q) {
+        // Render all categorized sections
+        emojiBody.innerHTML = CLASSIC_EMOJI_CATEGORIES.map(
+          (cat) => `
+            <div class="chat-emoji-cat-section" id="emoji-sec-${cat.id}">
+              <div class="chat-emoji-cat-title">${escapeHtml(cat.name)}</div>
+              <div class="chat-emoji-grid">
+                ${cat.items
+                  .map(
+                    (it) => `
+                  <button type="button" class="chat-emoji-cell" data-emoji="${it.e}" data-name="${escapeHtml(it.n)}" title="${escapeHtml(it.n)}">
+                    ${it.e}
+                  </button>
+                `,
+                  )
+                  .join('')}
+              </div>
+            </div>
+          `,
+        ).join('');
+      } else {
+        // Filtered search mode
+        const matches = [];
+        CLASSIC_EMOJI_CATEGORIES.forEach((cat) => {
+          cat.items.forEach((it) => {
+            if (it.n.toLowerCase().includes(q) || it.k.toLowerCase().includes(q)) {
+              matches.push(it);
+            }
+          });
+        });
+
+        if (matches.length === 0) {
+          emojiBody.innerHTML = `
+            <div style="text-align:center;padding:24px 10px;color:#98A2B3;font-size:13px;">
+              No emojis found for "${escapeHtml(filterQuery)}"
+            </div>
+          `;
+        } else {
+          emojiBody.innerHTML = `
+            <div class="chat-emoji-cat-section">
+              <div class="chat-emoji-cat-title">Search Results (${matches.length})</div>
+              <div class="chat-emoji-grid">
+                ${matches
+                  .map(
+                    (it) => `
+                  <button type="button" class="chat-emoji-cell" data-emoji="${it.e}" data-name="${escapeHtml(it.n)}" title="${escapeHtml(it.n)}">
+                    ${it.e}
+                  </button>
+                `,
+                  )
+                  .join('')}
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // Attach hover preview listeners
+      emojiBody.querySelectorAll('.chat-emoji-cell').forEach((cell) => {
+        cell.addEventListener('mouseenter', () => {
+          const em = cell.dataset.emoji;
+          const nm = cell.dataset.name || '';
+          if (emojiPreviewChar) emojiPreviewChar.textContent = em;
+          if (emojiPreviewName) emojiPreviewName.textContent = `:${nm.replace(/\s+/g, '_')}:`;
+          if (emojiPreviewSub) emojiPreviewSub.textContent = nm.charAt(0).toUpperCase() + nm.slice(1);
+        });
+      });
+    }
+
+    // Initialize classic emoji components
+    renderClassicTabs();
+    renderClassicEmojiBody();
+
+    // Search input listener
+    if (emojiSearchInput) {
+      emojiSearchInput.addEventListener('input', (e) => {
+        renderClassicEmojiBody(e.target.value);
+      });
+    }
+
+    // Click emoji to insert into chat input
+    if (emojiBody) {
+      emojiBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('.chat-emoji-cell');
+        if (!btn) return;
+        const emoji = btn.dataset.emoji;
+        if (!emoji || !chatInput) return;
+        const start = chatInput.selectionStart ?? chatInput.value.length;
+        const end = chatInput.selectionEnd ?? chatInput.value.length;
+        const val = chatInput.value;
+        chatInput.value = val.substring(0, start) + emoji + val.substring(end);
+        chatInput.focus();
+        const newPos = start + emoji.length;
+        chatInput.setSelectionRange(newPos, newPos);
+      });
+    }
+
+    // Toggle popover trigger
+    if (emojiBtn && emojiPopover) {
+      emojiBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = emojiPopover.style.display === 'flex';
+        emojiPopover.style.display = isOpen ? 'none' : 'flex';
+        emojiBtn.classList.toggle('active', !isOpen);
+        if (!isOpen) {
+          if (emojiSearchInput) {
+            emojiSearchInput.value = '';
+            renderClassicEmojiBody('');
+            setTimeout(() => emojiSearchInput.focus(), 50);
+          }
+        }
+      });
+
+      if (emojiCloseBtn) {
+        emojiCloseBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          emojiPopover.style.display = 'none';
+          emojiBtn.classList.remove('active');
+        });
+      }
+
+      document.addEventListener('click', (e) => {
+        if (emojiPopover && emojiPopover.style.display === 'flex') {
+          if (!emojiPopover.contains(e.target) && e.target !== emojiBtn && !emojiBtn.contains(e.target)) {
+            emojiPopover.style.display = 'none';
+            emojiBtn.classList.remove('active');
+          }
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && emojiPopover && emojiPopover.style.display === 'flex') {
+          emojiPopover.style.display = 'none';
+          emojiBtn.classList.remove('active');
+          chatInput?.focus();
+        }
+      });
+    }
+
+    // Attachment file input trigger & preview
+    if (attachBtn && fileInput) {
+      attachBtn.addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        if (file.size > 25 * 1024 * 1024) {
+          window.showHuddleToast('Image size exceeds 25MB limit.', 'error');
+          fileInput.value = '';
+          return;
+        }
+        stagedImageFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (previewImg) previewImg.src = e.target.result;
+          if (previewName) previewName.textContent = file.name;
+          if (previewSize) {
+            const kb = Math.round(file.size / 1024);
+            previewSize.textContent = kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
+          }
+          if (previewBar) previewBar.style.display = 'flex';
+          chatInput?.focus();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    if (removeAttachmentBtn) {
+      removeAttachmentBtn.addEventListener('click', () => {
+        stagedImageFile = null;
+        if (fileInput) fileInput.value = '';
+        if (previewBar) previewBar.style.display = 'none';
+        if (previewImg) previewImg.src = '';
+      });
+    }
+
     if (inviteBtn) {
       inviteBtn.addEventListener('click', () => {
+        const activeWsId = window.HuddleApi.getActiveWorkspaceId();
+        const currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
+        const currentUserId = currentUser?.id || currentUser?.userId;
+        const myOwned = (userWorkspaces || []).filter(
+          (w) => !w.owner_id || (currentUserId && w.owner_id === currentUserId)
+        );
+        const personalWs = myOwned[0] || (userWorkspaces && userWorkspaces[0]);
+        if (personalWs && activeWsId === personalWs.id) {
+          window.showHuddleToast(
+            'This is your personal workspace. Create a team workspace first to invite teammates!',
+            'info'
+          );
+          openCreateModal();
+          return;
+        }
         openAddMemberModal(channel);
       });
     }
@@ -1536,15 +2145,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     loadChannelMembers();
 
-    // Mobile in-header drawer trigger
-    const headerDrawerBtn = mainArea.querySelector('.channel-header-drawer-btn');
-    if (headerDrawerBtn) {
-      headerDrawerBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openMobileDrawer();
-      });
-    }
-
     // Typing emission listener
     if (chatInput) {
       chatInput.addEventListener('input', () => {
@@ -1567,23 +2167,59 @@ document.addEventListener('DOMContentLoaded', async () => {
       chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const text = chatInput.value.trim();
-        if (!text) return;
+        if (!text && !stagedImageFile) return;
 
-        chatInput.value = '';
-
-        if (isTypingSelf && socket) {
-          socket.emit('typing:stop', { channelId: channel.id });
-          isTypingSelf = false;
+        const sendBtn = document.getElementById('channel-chat-send-btn');
+        const origBtnContent = sendBtn ? sendBtn.innerHTML : 'Send';
+        if (sendBtn) {
+          sendBtn.disabled = true;
+          sendBtn.innerHTML = `<span>${stagedImageFile ? 'Uploading...' : 'Sending...'}</span>`;
         }
 
+        let uploadedAttachments = null;
+
         try {
-          const sent = await window.HuddleApi.messages.send(channel.id, text);
-          if (sent && (sent.id || sent.content)) {
+          if (stagedImageFile) {
+            const uploadRes = await window.HuddleApi.uploads.uploadFile(stagedImageFile);
+            if (uploadRes && uploadRes.url) {
+              uploadedAttachments = [
+                {
+                  url: uploadRes.url,
+                  file_name: uploadRes.file_name || stagedImageFile.name,
+                  file_size: uploadRes.file_size || stagedImageFile.size,
+                  file_type: uploadRes.file_type || stagedImageFile.type || 'image/png',
+                },
+              ];
+            }
+          }
+
+          chatInput.value = '';
+          stagedImageFile = null;
+          if (fileInput) fileInput.value = '';
+          if (previewBar) previewBar.style.display = 'none';
+          if (previewImg) previewImg.src = '';
+          if (emojiPopover) {
+            emojiPopover.style.display = 'none';
+            emojiBtn?.classList.remove('active');
+          }
+
+          if (isTypingSelf && socket) {
+            socket.emit('typing:stop', { channelId: channel.id });
+            isTypingSelf = false;
+          }
+
+          const sent = await window.HuddleApi.messages.send(channel.id, text, null, uploadedAttachments);
+          if (sent && (sent.id || sent.content || (sent.attachments && sent.attachments.length))) {
             handleIncomingMessage(sent);
           }
         } catch (err) {
           console.error('Failed to send message:', err);
           window.showHuddleToast(err.message || 'Failed to send message.', 'error');
+        } finally {
+          if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = origBtnContent;
+          }
         }
       });
     }
@@ -1753,6 +2389,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       reactionsHtml += `</div>`;
     }
 
+    // System notification message styling (e.g. member added to group)
+    const isSystemJoinNotice = Boolean(
+      msg.content &&
+      (msg.content.includes('added') && (msg.content.includes('to #') || msg.content.includes('to the group') || msg.content.includes('was added to')))
+    );
+
+    if (isSystemJoinNotice && !isDeleted) {
+      return `
+        <div class="message-row message-system-announcement" id="msg-row-${escapeHtml(msg.id)}" data-message-id="${escapeHtml(msg.id)}" style="display:flex;justify-content:center;align-items:center;padding:10px 16px;width:100%;box-sizing:border-box;">
+          <div style="display:inline-flex;align-items:center;gap:7px;background:#F8F9FA;border:1px solid #EAECF0;border-radius:20px;padding:6px 14px;font-size:12.5px;color:#475467;font-weight:500;box-shadow:0 1px 2px rgba(16,24,40,0.03);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7.5" r="4"></circle>
+              <line x1="20" y1="8" x2="20" y2="14"></line>
+              <line x1="23" y1="11" x2="17" y2="11"></line>
+            </svg>
+            <span>${escapeHtml(msg.content)}</span>
+            <span style="font-size:11px;color:#98A2B3;margin-left:4px;">${escapeHtml(timeStr)}</span>
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="message-row ${isMe ? 'is-me' : 'is-other'} ${isGrouped ? 'is-grouped' : ''}" id="msg-row-${escapeHtml(msg.id)}" data-message-id="${escapeHtml(msg.id)}" style="position:relative;display:flex;width:100%;box-sizing:border-box;padding:4px 16px;gap:10px;${isMe ? 'flex-direction:row-reverse;justify-content:flex-start;' : 'flex-direction:row;justify-content:flex-start;'}">
         <!-- Hover action toolbar -->
@@ -1803,9 +2462,26 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
 
           <div class="message-bubble" style="${isMe ? 'background:#FF6A00;color:#ffffff;border-radius:18px 18px 4px 18px;padding:9px 14px;box-shadow:0 1px 2px rgba(255,106,0,0.18);' : 'background:#F2F4F7;color:#101828;border:1px solid #EAECF0;border-radius:18px 18px 18px 4px;padding:9px 14px;'}">
-            <div class="message-body-content" id="msg-body-${escapeHtml(msg.id)}" style="font-size:14px;line-height:1.45;word-break:break-word;color:${isMe ? '#ffffff' : (isDeleted ? '#98A2B3' : '#1D2939')};font-style:${isDeleted ? 'italic' : 'normal'};">
-              ${isDeleted ? 'This message was deleted' : escapeHtml(msg.content || '')}
-            </div>
+            ${
+              msg.content || isDeleted
+                ? `<div class="message-body-content" id="msg-body-${escapeHtml(msg.id)}" style="font-size:14px;line-height:1.45;word-break:break-word;color:${isMe ? '#ffffff' : (isDeleted ? '#98A2B3' : '#1D2939')};font-style:${isDeleted ? 'italic' : 'normal'};">
+                    ${isDeleted ? 'This message was deleted' : escapeHtml(msg.content || '')}
+                  </div>`
+                : ''
+            }
+            ${
+              !isDeleted && msg.attachments && msg.attachments.length > 0
+                ? `<div class="message-attachments-container" style="display:flex;flex-direction:column;gap:6px;${msg.content ? 'margin-top:8px;' : ''}">
+                    ${msg.attachments.map((att) => `
+                      <div class="message-attachment-card" style="border-radius:12px;overflow:hidden;max-width:320px;border:1px solid ${isMe ? 'rgba(255,255,255,0.3)' : '#EAECF0'};background:#ffffff;box-shadow:0 2px 4px rgba(0,0,0,0.06);">
+                        <a href="${escapeHtml(att.url)}" target="_blank" rel="noopener noreferrer" style="display:block;cursor:pointer;" title="Click to view full size">
+                          <img src="${escapeHtml(att.url)}" alt="${escapeHtml(att.file_name || 'Attached image')}" style="width:100%;max-height:260px;object-fit:cover;display:block;" loading="lazy" />
+                        </a>
+                      </div>
+                    `).join('')}
+                  </div>`
+                : ''
+            }
           </div>
 
           ${reactionsHtml}
@@ -2085,10 +2761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       } else {
         const savedId = window.HuddleApi.getActiveWorkspaceId();
-        // While workspace switching is paused, always lock to the user's primary/normal workspace
-        activeWs = PAUSE_WORKSPACE_SWITCHING
-          ? workspaces[0]
-          : (workspaces.find((w) => w.id === savedId) || workspaces[0]);
+        activeWs = workspaces.find((w) => w.id === savedId) || workspaces[0];
       }
 
       userWorkspaces = workspaces || [];
@@ -2135,26 +2808,96 @@ document.addEventListener('DOMContentLoaded', async () => {
     const popoverTitleEl = document.querySelector('.popover-workspace-title');
     if (popoverTitleEl) popoverTitleEl.textContent = activeWs.name;
 
-    const wsIdEl = document.getElementById('popover-workspace-id-text');
-    if (wsIdEl) wsIdEl.textContent = activeWs.id || 'N/A';
+    const currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
+    const currentUserId = currentUser?.id || currentUser?.userId;
 
-    const copyBtn = document.getElementById('copy-workspace-id-btn');
-    if (copyBtn) {
-      copyBtn.onclick = async (e) => {
-        e.stopPropagation();
-        try {
-          await navigator.clipboard.writeText(activeWs.id);
-          window.showHuddleToast('Workspace ID copied to clipboard!', 'success');
-        } catch {
-          const temp = document.createElement('input');
-          temp.value = activeWs.id;
-          document.body.appendChild(temp);
-          temp.select();
-          document.execCommand('copy');
-          document.body.removeChild(temp);
-          window.showHuddleToast('Workspace ID copied to clipboard!', 'success');
+    // Distinguish Personal Workspace vs Team Workspace:
+    // The user's Personal Workspace is their first/earliest owned workspace (or workspaces[0]).
+    const myOwnedWorkspaces = (workspaces || []).filter(
+      (w) => !w.owner_id || (currentUserId && w.owner_id === currentUserId)
+    );
+    const personalWs = myOwnedWorkspaces[0] || (workspaces && workspaces[0]);
+    const isPersonal = Boolean(personalWs && activeWs.id === personalWs.id);
+
+    // Update popover subtitle
+    const popoverSubEl = document.getElementById('popover-workspace-subtitle');
+    if (popoverSubEl) {
+      popoverSubEl.textContent = isPersonal
+        ? '🔒 Personal Workspace (Private)'
+        : '👥 Team Workspace (Shareable)';
+    }
+
+    // Dynamic ID Box:
+    // If Personal: do NOT share personal workspace ID. Show explanation + CTA to create a shareable team workspace.
+    // If Team Workspace: show shareable Workspace ID + Copy ID button.
+    const idBoxContainer = document.getElementById('popover-workspace-id-box');
+    if (idBoxContainer) {
+      if (isPersonal) {
+        idBoxContainer.innerHTML = `
+          <div style="background: #F8F9FA; border: 1px dashed #D0D5DD; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; width: 100%; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: #475467;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <span>Private Personal Workspace</span>
+            </div>
+            <p style="margin: 0; font-size: 11px; color: #667085; line-height: 1.4;">
+              Your personal workspace is private and cannot be shared. To collaborate with teammates and share an ID, create a team workspace first!
+            </p>
+            <button type="button" id="personal-create-ws-cta" style="margin-top: 4px; background: #FF6A00; color: #ffffff; border: none; border-radius: 6px; padding: 7px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: background 0.15s ease;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span>+ Create a Workspace to Share</span>
+            </button>
+          </div>
+        `;
+        const createCta = document.getElementById('personal-create-ws-cta');
+        if (createCta) {
+          createCta.onclick = (e) => {
+            e.stopPropagation();
+            togglePopover(false);
+            openCreateModal();
+          };
         }
-      };
+      } else {
+        idBoxContainer.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #F8F9FA; border: 1px solid #EAECF0; border-radius: 8px; padding: 7px 10px; width: 100%; box-sizing: border-box;">
+            <div style="display: flex; flex-direction: column; min-width: 0;">
+              <span style="font-size: 9.5px; font-weight: 700; text-transform: uppercase; color: #98A2B3; letter-spacing: 0.5px;">Shareable Workspace ID</span>
+              <code id="popover-workspace-id-text" style="font-size: 11px; font-weight: 600; color: #344054; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">${escapeHtml(activeWs.id || '')}</code>
+            </div>
+            <button type="button" id="copy-workspace-id-btn" title="Copy Workspace ID to invite teammates"
+              style="background: #FF6A00; color: #ffffff; border: none; border-radius: 6px; padding: 5px 9px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; transition: opacity 0.15s ease;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span>Copy ID</span>
+            </button>
+          </div>
+        `;
+        const copyBtn = document.getElementById('copy-workspace-id-btn');
+        if (copyBtn) {
+          copyBtn.onclick = async (e) => {
+            e.stopPropagation();
+            try {
+              await navigator.clipboard.writeText(activeWs.id);
+              window.showHuddleToast('Workspace ID copied! Share it with teammates to let them join.', 'success');
+            } catch {
+              const temp = document.createElement('input');
+              temp.value = activeWs.id;
+              document.body.appendChild(temp);
+              temp.select();
+              document.execCommand('copy');
+              document.body.removeChild(temp);
+              window.showHuddleToast('Workspace ID copied! Share it with teammates to let them join.', 'success');
+            }
+          };
+        }
+      }
     }
 
     // Render list of workspaces to switch between in the popover
@@ -2166,11 +2909,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         workspaces.forEach((ws) => {
           const isCurrent = ws.id === activeWs.id;
+          const isWsPersonal = Boolean(personalWs && ws.id === personalWs.id);
           const itemBtn = document.createElement('button');
           itemBtn.type = 'button';
           itemBtn.className = `popover-item-btn workspace-switch-item ${isCurrent ? 'active-ws' : ''}`;
           itemBtn.setAttribute('role', 'menuitem');
-          itemBtn.title = isCurrent ? `${ws.name} (Current Workspace)` : `Switch to ${ws.name}`;
+          itemBtn.title = isCurrent
+            ? `${ws.name} (Current Workspace)`
+            : isWsPersonal
+            ? `Switch back to your Personal Workspace`
+            : `Switch to ${ws.name}`;
           itemBtn.style.cssText = `
             width: 100%;
             display: flex;
@@ -2188,18 +2936,31 @@ document.addEventListener('DOMContentLoaded', async () => {
           const initial = (ws.name || 'W').charAt(0).toUpperCase();
           itemBtn.innerHTML = `
             <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
-              <div style="width: 22px; height: 22px; border-radius: 6px; background: ${isCurrent ? '#FF6A00' : '#EAECF0'}; color: ${isCurrent ? '#ffffff' : '#475467'}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">
+              <div style="width: 22px; height: 22px; border-radius: 6px; background: ${isCurrent ? '#FF6A00' : isWsPersonal ? '#475467' : '#EAECF0'}; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">
                 ${escapeHtml(initial)}
               </div>
-              <span style="font-size: 13px; font-weight: ${isCurrent ? '700' : '500'}; color: #101828; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${escapeHtml(ws.name || 'Workspace')}
-              </span>
+              <div style="display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1;">
+                <span style="font-size: 13px; font-weight: ${isCurrent ? '700' : '500'}; color: #101828; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${escapeHtml(ws.name || 'Workspace')}
+                </span>
+                <span style="font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 4px; flex-shrink: 0; ${
+                  isWsPersonal
+                    ? 'background: #EAECF0; color: #344054;'
+                    : 'background: #FFF4ED; color: #FF6A00;'
+                }">
+                  ${isWsPersonal ? 'Personal' : 'Team'}
+                </span>
+              </div>
             </div>
-            ${isCurrent ? `
+            ${
+              isCurrent
+                ? `
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-left: 6px;">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
-            ` : ''}
+            `
+                : ''
+            }
           `;
 
           itemBtn.addEventListener('mouseenter', () => {
@@ -2216,7 +2977,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             window.HuddleApi.setActiveWorkspaceId(ws.id);
             window.HuddleApi.setActiveWorkspaceName(ws.name);
-            window.showHuddleToast(`Switching to "${ws.name}"...`, 'info');
+            window.showHuddleToast(
+              isWsPersonal
+                ? 'Switching back to your Personal Workspace...'
+                : `Switching to "${ws.name}"...`,
+              'info'
+            );
             setTimeout(() => {
               window.location.reload();
             }, 150);

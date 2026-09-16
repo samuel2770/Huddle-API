@@ -2,6 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import { join, resolve, extname } from 'path';
 import { PresignRequestDto, UploadPurpose } from './dto/presign-request.dto.js';
 
 const ALLOWED_MIME_TYPES: Record<UploadPurpose, string[]> = {
@@ -109,4 +111,35 @@ export class UploadsService {
       expiresIn,
     };
   }
+
+  async saveLocalFile(
+    userId: string,
+    file: { originalname: string; mimetype: string; size: number; buffer: Buffer },
+  ): Promise<{
+    url: string;
+    file_name: string;
+    file_size: number;
+    file_type: string;
+  }> {
+    const rawTargetDir = process.env.LOCAL_UPLOAD_DIR || 'uploads';
+    const targetDir = resolve(rawTargetDir);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    const ext = extname(file.originalname || '') || '.png';
+    const uniqueId = crypto.randomUUID();
+    const fileName = `${uniqueId}${ext}`;
+    const filePath = join(targetDir, fileName);
+
+    await fs.promises.writeFile(filePath, file.buffer);
+
+    return {
+      url: `/uploads/${fileName}`,
+      file_name: file.originalname || 'attachment',
+      file_size: file.size,
+      file_type: file.mimetype || 'image/png',
+    };
+  }
 }
+

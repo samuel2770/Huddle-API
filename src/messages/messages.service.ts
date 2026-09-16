@@ -188,6 +188,22 @@ export class MessagesService {
       .leftJoinAndSelect('message.sender', 'sender')
       .where('message.channel_id = :channelId', { channelId });
 
+    // Group channel message visibility:
+    // Newly added members should only see recent messages from when they were added, not old history.
+    if (channel.type !== ChannelType.DM && channel.created_by !== userId) {
+      const membership =
+        channel.members?.find((m) => m.user_id === userId) ||
+        (await this.memberRepository.findOne({
+          where: { channel_id: channelId, user_id: userId },
+        }));
+
+      if (membership?.joined_at) {
+        // Buffer by 1000ms so the member's addition announcement message is included
+        const visibleFrom = new Date(new Date(membership.joined_at).getTime() - 1000);
+        qb.andWhere('message.created_at >= :visibleFrom', { visibleFrom });
+      }
+    }
+
     if (query.replyToMessageId) {
       qb.andWhere('message.reply_to_message_id = :replyToId', {
         replyToId: query.replyToMessageId,
@@ -298,7 +314,7 @@ export class MessagesService {
     channelId: string,
     messageId: string,
     userId: string,
-  ): Promise<{ message: string; id: string }> {
+  ): Promise<{ success: boolean; message: string; id: string }> {
     const message = await this.findOne(channelId, messageId);
 
     if (message.sender_id !== userId) {
@@ -317,24 +333,34 @@ export class MessagesService {
       channelId,
     });
 
-    return { message: 'Message deleted successfully', id: messageId };
+    return { success: true, message: 'Message deleted successfully', id: messageId };
   }
 
   async markRead(
     channelId: string,
     messageId: string,
     userId: string,
-  ): Promise<{ success: boolean }> {
+  ): Promise<{ success: boolean; lastReadMessageId: string; unreadCount: number }> {
     const message = await this.findOne(channelId, messageId);
 
-    await this.memberRepository.update(
-      { channel_id: channelId, user_id: userId },
-      {
-        last_read_message_id: message.id,
-        unread_count: 0,
-      },
-    );
+    const member = await this.memberRepository.findOne({
+      where: { channel_id: channelId, user_id: userId },
+    });
 
-    return { success: true };
+    if (member) {
+      member.last_read_message_id = message.id;
+      member.unread_count = 0;
+      await this.memberRepository.save(member);
+    } else {
+      await this.memberRepository.update(
+        { channel_id: channelId, user_id: userId },
+        {
+          last_read_message_id: message.id,
+          unread_count: 0,
+        },
+      );
+    }
+
+    return { success: true, lastReadMessageId: message.id, unreadCount: 0 };
   }
 }

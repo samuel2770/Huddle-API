@@ -12,6 +12,7 @@ import { Channel, ChannelType } from './entities/channel.entity.js';
 import { ChannelMember } from './entities/channel-member.entity.js';
 import { User } from '../users/entities/user.entity.js';
 import { WorkspaceMember } from '../workspaces/entities/workspace-member.entity.js';
+import { ChatEventsService } from '../gateway/chat-events.service.js';
 
 describe('ChannelsService', () => {
   let service: ChannelsService;
@@ -111,6 +112,13 @@ describe('ChannelsService', () => {
         {
           provide: DataSource,
           useValue: mockDataSource,
+        },
+        {
+          provide: ChatEventsService,
+          useValue: {
+            broadcastToChannel: vi.fn(),
+            broadcastToUser: vi.fn(),
+          },
         },
       ],
     }).compile();
