@@ -29,10 +29,14 @@ export { REDIS_CLIENT } from './redis.constants.js';
           lazyConnect: true,
         });
 
+        redis.on('error', (err: Error) => {
+          // Suppress unhandled redis error crashes when Redis is offline
+        });
+
         // Attempt connection, but don't crash if Redis is unavailable
         redis.connect().catch((err: Error) => {
           console.warn(
-            `[Redis] Could not connect to ${host}:${port} — presence tracking will be unavailable. Error: ${err.message}`,
+            `[Redis] Could not connect to ${host}:${port} — fallback to in-memory presence. Error: ${err.message}`,
           );
         });
 

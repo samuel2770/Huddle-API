@@ -228,12 +228,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('[Huddle] Invited to channel:', channel?.name);
       window.showHuddleToast(`You were added to #${channel?.name || 'a channel'}`, 'success');
       try {
-        if (typeof loadUserWorkspaces === 'function') {
-          await loadUserWorkspaces();
-        }
         const wsId = window.HuddleApi.getActiveWorkspaceId();
         if (wsId && typeof loadWorkspaceChannels === 'function') {
           await loadWorkspaceChannels(wsId);
+        }
+        // Auto-navigate to the newly invited channel
+        if (channel && channel.id) {
+          window.HuddleApi.setActiveChannelId(channel.id);
+          document.querySelectorAll('.sidebar-channel-item').forEach((el) => el.classList.remove('active'));
+          const newItem = document.querySelector(`[data-channel-id="${channel.id}"]`);
+          if (newItem) newItem.classList.add('active');
+          renderChannelMainView(channel);
         }
       } catch (err) {
         console.error('Error refreshing on channel:invited:', err);
@@ -1315,13 +1320,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mainArea = document.getElementById('dashboard-main');
     if (!mainArea || !channel) return;
 
-    activeChannel = channel;
     const currentUser = window.HuddleApi.getUser();
 
-    // Socket: leave previous, join new channel room
+    // Socket: leave previous channel room, then join new one
     if (socket) {
+      if (activeChannel && activeChannel.id !== channel.id) {
+        socket.emit('channel:leave', { channelId: activeChannel.id });
+      }
       socket.emit('channel:join', { channelId: channel.id });
     }
+
+    activeChannel = channel;
 
     // Determine channel title & subtitle
     let channelTitle = `#${channel.name}`;
