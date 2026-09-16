@@ -1421,7 +1421,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                   <span id="channel-members-count-text">Members</span>
                   <span id="channel-online-count-badge" style="font-size:11px;color:#12B76A;font-weight:600;margin-left:4px;"></span>
                 </button>
-                <button type="button" id="channel-invite-btn" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#FF6A00;color:#ffffff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s ease;">
+                <button type="button" id="channel-invite-btn" title="Add user to #${escapeHtml(channel.name)}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#FF6A00;color:#ffffff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s ease;">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                     <circle cx="8.5" cy="7.5" r="4"></circle>
@@ -2095,21 +2095,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (inviteBtn) {
       inviteBtn.addEventListener('click', () => {
-        const activeWsId = window.HuddleApi.getActiveWorkspaceId();
-        const currentUser = window.HuddleApi ? window.HuddleApi.getUser() : null;
-        const currentUserId = currentUser?.id || currentUser?.userId;
-        const myOwned = (userWorkspaces || []).filter(
-          (w) => !w.owner_id || (currentUserId && w.owner_id === currentUserId)
-        );
-        const personalWs = myOwned[0] || (userWorkspaces && userWorkspaces[0]);
-        if (personalWs && activeWsId === personalWs.id) {
-          window.showHuddleToast(
-            'This is your personal workspace. Create a team workspace first to invite teammates!',
-            'info'
-          );
-          openCreateModal();
-          return;
-        }
         openAddMemberModal(channel);
       });
     }
