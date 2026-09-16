@@ -2321,18 +2321,20 @@ html, body {
 
 /* My sent messages: right-aligned */
 .message-row.is-me {
-  flex-direction: row-reverse;
-  justify-content: flex-start;
+  flex-direction: row-reverse !important;
+  justify-content: flex-start !important;
 }
 
 .message-row.is-me .message-bubble-wrapper {
-  align-items: flex-end;
+  align-items: flex-end !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
 }
 
 .message-row.is-me .message-bubble {
-  background-color: #FF6A00;
-  color: #ffffff;
-  border-radius: 18px 18px 4px 18px;
+  background-color: #FF6A00 !important;
+  color: #ffffff !important;
+  border-radius: 18px 18px 4px 18px !important;
 }
 
 .message-row.is-me .message-body-content {
@@ -2340,25 +2342,27 @@ html, body {
 }
 
 .message-row.is-me .message-actions-toolbar {
-  left: 20px;
-  right: auto;
+  left: 20px !important;
+  right: auto !important;
 }
 
 /* Other people's received messages: left-aligned */
 .message-row.is-other {
-  flex-direction: row;
-  justify-content: flex-start;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
 }
 
 .message-row.is-other .message-bubble-wrapper {
-  align-items: flex-start;
+  align-items: flex-start !important;
+  margin-right: auto !important;
+  margin-left: 0 !important;
 }
 
 .message-row.is-other .message-bubble {
-  background-color: #F2F4F7;
-  color: #101828;
-  border: 1px solid #EAECF0;
-  border-radius: 18px 18px 18px 4px;
+  background-color: #F2F4F7 !important;
+  color: #101828 !important;
+  border: 1px solid #EAECF0 !important;
+  border-radius: 18px 18px 18px 4px !important;
 }
 
 .message-row.is-other .message-body-content {
@@ -2366,8 +2370,8 @@ html, body {
 }
 
 .message-row.is-other .message-actions-toolbar {
-  right: 20px;
-  left: auto;
+  right: 20px !important;
+  left: auto !important;
 }
 
 .message-row.is-grouped {

@@ -1688,17 +1688,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function renderSingleMessageHtml(msg, isGrouped, currentUser) {
-    const isMe =
-      currentUser &&
-      (msg.sender_id === currentUser.id || msg.senderId === currentUser.id || msg.sender?.id === currentUser.id);
-    const senderName = msg.sender?.full_name || msg.sender?.fullName || (isMe ? (currentUser.fullName || 'You') : 'Teammate');
-    const senderUsername = msg.sender?.username || (isMe ? (currentUser.username || 'you') : '');
+    const myId = currentUser?.id || currentUser?.user?.id || currentUser?.userId || currentUser?.user_id;
+    let tokenSub = null;
+    let tokenEmail = null;
+    try {
+      const tok = window.HuddleApi?.getToken();
+      if (tok && tok.includes('.')) {
+        const payload = JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        tokenSub = payload.sub;
+        tokenEmail = payload.email;
+      }
+    } catch {}
+
+    const myEffectiveId = myId || tokenSub;
+    const myEmail = (currentUser?.email || currentUser?.user?.email || tokenEmail || '').toLowerCase().trim();
+    const myUsername = (currentUser?.username || currentUser?.user?.username || '').toLowerCase().trim();
+
+    const senderId = msg.sender_id || msg.senderId || msg.sender?.id || msg.sender?.userId || msg.user_id || msg.userId;
+    const senderEmail = (msg.sender?.email || msg.senderEmail || '').toLowerCase().trim();
+    const senderUsername = (msg.sender?.username || msg.senderUsername || '').toLowerCase().trim();
+
+    const isMe = Boolean(
+      (myEffectiveId && senderId && String(myEffectiveId).toLowerCase() === String(senderId).toLowerCase()) ||
+      (myEmail && senderEmail && myEmail === senderEmail) ||
+      (myUsername && senderUsername && myUsername === senderUsername)
+    );
+
+    const senderName = msg.sender?.full_name || msg.sender?.fullName || (isMe ? (currentUser?.fullName || 'You') : 'Teammate');
+    const senderDisplayUsername = msg.sender?.username || (isMe ? (currentUser?.username || 'you') : '');
     const timeStr = formatTime(msg.created_at || msg.createdAt);
     const isDeleted = Boolean(msg.is_deleted);
     const isEdited = Boolean(msg.is_edited);
 
     const initial = senderName.charAt(0).toUpperCase();
-    const avatarUrl = msg.sender?.avatar_url || msg.sender?.avatarUrl || (isMe ? currentUser.avatarUrl : null);
+    const avatarUrl = msg.sender?.avatar_url || msg.sender?.avatarUrl || (isMe ? currentUser?.avatarUrl : null);
 
     const avatarHtml = avatarUrl
       ? `<img src="${escapeHtml(avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
@@ -1709,7 +1732,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     (msg.reactions || []).forEach((r) => {
       const entry = reactionMap.get(r.emoji) || { count: 0, hasReacted: false };
       entry.count += 1;
-      if (currentUser && (r.user_id === currentUser.id || r.user?.id === currentUser.id)) {
+      const rUid = r.user_id || r.userId || r.user?.id;
+      if (myEffectiveId && rUid && String(rUid).toLowerCase() === String(myEffectiveId).toLowerCase()) {
         entry.hasReacted = true;
       }
       reactionMap.set(r.emoji, entry);
@@ -1730,12 +1754,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     return `
-      <div class="message-row ${isMe ? 'is-me' : 'is-other'} ${isGrouped ? 'is-grouped' : ''}" id="msg-row-${escapeHtml(msg.id)}" data-message-id="${escapeHtml(msg.id)}">
+      <div class="message-row ${isMe ? 'is-me' : 'is-other'} ${isGrouped ? 'is-grouped' : ''}" id="msg-row-${escapeHtml(msg.id)}" data-message-id="${escapeHtml(msg.id)}" style="position:relative;display:flex;width:100%;box-sizing:border-box;padding:4px 16px;gap:10px;${isMe ? 'flex-direction:row-reverse;justify-content:flex-start;' : 'flex-direction:row;justify-content:flex-start;'}">
         <!-- Hover action toolbar -->
         ${
           !isDeleted
             ? `
-          <div class="message-actions-toolbar">
+          <div class="message-actions-toolbar" style="${isMe ? 'left:20px;right:auto;' : 'right:20px;left:auto;'}">
             <button type="button" class="message-action-btn quick-react-btn" data-emoji="👍" title="React 👍">👍</button>
             <button type="button" class="message-action-btn quick-react-btn" data-emoji="❤️" title="React ❤️">❤️</button>
             <button type="button" class="message-action-btn quick-react-btn" data-emoji="😂" title="React 😂">😂</button>
@@ -1759,18 +1783,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         <!-- Avatar Column -->
-        <div class="message-avatar-col" style="width:34px;height:34px;border-radius:50%;background:${isMe ? '#FF6A00' : '#475467'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden;">
+        <div class="message-avatar-col" style="width:34px;height:34px;border-radius:50%;background:${isMe ? '#FF6A00' : '#475467'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden;${isGrouped ? 'visibility:hidden;height:0;' : ''}">
           ${avatarHtml}
         </div>
 
         <!-- Bubble & Content Column -->
-        <div class="message-bubble-wrapper" style="display:flex;flex-direction:column;max-width:75%;min-width:48px;">
+        <div class="message-bubble-wrapper" style="display:flex;flex-direction:column;max-width:75%;min-width:48px;${isMe ? 'align-items:flex-end;margin-left:auto;margin-right:0;' : 'align-items:flex-start;margin-right:auto;margin-left:0;'}">
           ${
             !isGrouped
               ? `
             <div class="message-header" style="display:flex;align-items:center;gap:6px;margin-bottom:3px;${isMe ? 'justify-content:flex-end;' : 'justify-content:flex-start;'}">
               ${!isMe ? `<span style="font-weight:700;font-size:13px;color:#101828;">${escapeHtml(senderName)}</span>` : ''}
-              ${!isMe && senderUsername ? `<span style="font-size:11.5px;font-weight:600;color:#FF6A00;">@${escapeHtml(senderUsername)}</span>` : ''}
+              ${!isMe && senderDisplayUsername ? `<span style="font-size:11.5px;font-weight:600;color:#FF6A00;">@${escapeHtml(senderDisplayUsername)}</span>` : ''}
               <span style="font-size:11px;color:#98A2B3;">${escapeHtml(timeStr)}</span>
               ${isEdited && !isDeleted ? `<span style="font-size:10.5px;color:#98A2B3;font-style:italic;">(edited)</span>` : ''}
             </div>
