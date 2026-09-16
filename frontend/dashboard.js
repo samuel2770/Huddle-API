@@ -1717,7 +1717,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let reactionsHtml = '';
     if (reactionMap.size > 0 && !isDeleted) {
-      reactionsHtml = `<div class="message-reactions-row">`;
+      reactionsHtml = `<div class="message-reactions-row" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;${isMe ? 'justify-content:flex-end;' : 'justify-content:flex-start;'}">`;
       reactionMap.forEach((data, emoji) => {
         reactionsHtml += `
           <button type="button" class="reaction-chip ${data.hasReacted ? 'active' : ''}" data-msg-id="${escapeHtml(msg.id)}" data-emoji="${escapeHtml(emoji)}" title="${data.hasReacted ? 'Remove reaction' : 'React'}">
@@ -1730,7 +1730,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     return `
-      <div class="message-row ${isGrouped ? 'is-grouped' : ''}" id="msg-row-${escapeHtml(msg.id)}" data-message-id="${escapeHtml(msg.id)}">
+      <div class="message-row ${isMe ? 'is-me' : 'is-other'} ${isGrouped ? 'is-grouped' : ''}" id="msg-row-${escapeHtml(msg.id)}" data-message-id="${escapeHtml(msg.id)}">
         <!-- Hover action toolbar -->
         ${
           !isDeleted
@@ -1759,27 +1759,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         <!-- Avatar Column -->
-        <div class="message-avatar-col" style="width:36px;height:36px;border-radius:50%;background:${isMe ? '#FF6A00' : '#475467'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;overflow:hidden;">
+        <div class="message-avatar-col" style="width:34px;height:34px;border-radius:50%;background:${isMe ? '#FF6A00' : '#475467'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;overflow:hidden;">
           ${avatarHtml}
         </div>
 
-        <!-- Content Column -->
-        <div style="flex:1;min-width:0;">
+        <!-- Bubble & Content Column -->
+        <div class="message-bubble-wrapper" style="display:flex;flex-direction:column;max-width:75%;min-width:48px;">
           ${
             !isGrouped
               ? `
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap;">
-              <span style="font-weight:700;font-size:14px;color:#101828;">${escapeHtml(senderName)}</span>
-              ${senderUsername ? `<span style="font-size:12px;font-weight:600;color:#FF6A00;">@${escapeHtml(senderUsername)}</span>` : ''}
-              <span style="font-size:11.5px;color:#98A2B3;margin-left:4px;">${escapeHtml(timeStr)}</span>
-              ${isEdited && !isDeleted ? `<span style="font-size:11px;color:#98A2B3;font-style:italic;">(edited)</span>` : ''}
+            <div class="message-header" style="display:flex;align-items:center;gap:6px;margin-bottom:3px;${isMe ? 'justify-content:flex-end;' : 'justify-content:flex-start;'}">
+              ${!isMe ? `<span style="font-weight:700;font-size:13px;color:#101828;">${escapeHtml(senderName)}</span>` : ''}
+              ${!isMe && senderUsername ? `<span style="font-size:11.5px;font-weight:600;color:#FF6A00;">@${escapeHtml(senderUsername)}</span>` : ''}
+              <span style="font-size:11px;color:#98A2B3;">${escapeHtml(timeStr)}</span>
+              ${isEdited && !isDeleted ? `<span style="font-size:10.5px;color:#98A2B3;font-style:italic;">(edited)</span>` : ''}
             </div>
           `
               : ''
           }
 
-          <div class="message-body-content" id="msg-body-${escapeHtml(msg.id)}" style="font-size:14px;color:${isDeleted ? '#98A2B3' : '#344054'};line-height:1.5;word-break:break-word;font-style:${isDeleted ? 'italic' : 'normal'};">
-            ${isDeleted ? 'This message was deleted' : escapeHtml(msg.content || '')}
+          <div class="message-bubble" style="${isMe ? 'background:#FF6A00;color:#ffffff;border-radius:18px 18px 4px 18px;padding:9px 14px;box-shadow:0 1px 2px rgba(255,106,0,0.18);' : 'background:#F2F4F7;color:#101828;border:1px solid #EAECF0;border-radius:18px 18px 18px 4px;padding:9px 14px;'}">
+            <div class="message-body-content" id="msg-body-${escapeHtml(msg.id)}" style="font-size:14px;line-height:1.45;word-break:break-word;color:${isMe ? '#ffffff' : (isDeleted ? '#98A2B3' : '#1D2939')};font-style:${isDeleted ? 'italic' : 'normal'};">
+              ${isDeleted ? 'This message was deleted' : escapeHtml(msg.content || '')}
+            </div>
           </div>
 
           ${reactionsHtml}

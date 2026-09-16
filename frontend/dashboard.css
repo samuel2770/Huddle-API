@@ -2303,33 +2303,97 @@ html, body {
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
 
-/* Message Item Hover & Layout */
+/* Sided Message Layout & Bubbles */
 .message-row {
   position: relative;
   display: flex;
-  gap: 12px;
-  padding: 6px 12px;
+  gap: 10px;
+  padding: 4px 16px;
   border-radius: 8px;
   transition: background-color 0.15s ease;
+  box-sizing: border-box;
+  width: 100%;
 }
+
 .message-row:hover {
-  background-color: #F9FAFB;
+  background-color: #FAFAFA;
 }
+
+/* My sent messages: right-aligned */
+.message-row.is-me {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+.message-row.is-me .message-bubble-wrapper {
+  align-items: flex-end;
+}
+
+.message-row.is-me .message-bubble {
+  background-color: #FF6A00;
+  color: #ffffff;
+  border-radius: 18px 18px 4px 18px;
+}
+
+.message-row.is-me .message-body-content {
+  color: #ffffff !important;
+}
+
+.message-row.is-me .message-actions-toolbar {
+  left: 20px;
+  right: auto;
+}
+
+/* Other people's received messages: left-aligned */
+.message-row.is-other {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.message-row.is-other .message-bubble-wrapper {
+  align-items: flex-start;
+}
+
+.message-row.is-other .message-bubble {
+  background-color: #F2F4F7;
+  color: #101828;
+  border: 1px solid #EAECF0;
+  border-radius: 18px 18px 18px 4px;
+}
+
+.message-row.is-other .message-body-content {
+  color: #1D2939 !important;
+}
+
+.message-row.is-other .message-actions-toolbar {
+  right: 20px;
+  left: auto;
+}
+
 .message-row.is-grouped {
   padding-top: 2px;
   padding-bottom: 2px;
-  margin-top: -8px;
+  margin-top: -3px;
 }
+
 .message-row.is-grouped .message-avatar-col {
   visibility: hidden;
   height: 0;
+  width: 34px;
+}
+
+.message-row.is-me.is-grouped .message-bubble {
+  border-top-right-radius: 6px;
+}
+
+.message-row.is-other.is-grouped .message-bubble {
+  border-top-left-radius: 6px;
 }
 
 /* Hover Message Action Bar */
 .message-actions-toolbar {
   position: absolute;
   top: -14px;
-  right: 16px;
   display: none;
   align-items: center;
   gap: 2px;
