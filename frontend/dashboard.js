@@ -299,8 +299,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Temporary: Multi-workspace switching paused for now
+  const PAUSE_WORKSPACE_SWITCHING = true;
+
   // --- Workspace Popover Logic ---
   function togglePopover(forceState) {
+    if (PAUSE_WORKSPACE_SWITCHING) return;
     if (!workspacePopover || !switcherTrigger) return;
     const shouldOpen =
       typeof forceState === 'boolean'
@@ -322,6 +326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function refreshWorkspacesList() {
+    if (PAUSE_WORKSPACE_SWITCHING) return;
     try {
       if (!window.HuddleApi || !window.HuddleApi.workspaces) return;
       const workspaces = await window.HuddleApi.workspaces.list();
@@ -339,8 +344,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (switcherTrigger) {
+    if (PAUSE_WORKSPACE_SWITCHING) {
+      switcherTrigger.style.cursor = 'default';
+      const chevron = switcherTrigger.querySelector('.switcher-chevron');
+      if (chevron) chevron.style.display = 'none';
+    }
     switcherTrigger.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (PAUSE_WORKSPACE_SWITCHING) return;
       togglePopover();
     });
   }
@@ -2025,7 +2036,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       } else {
         const savedId = window.HuddleApi.getActiveWorkspaceId();
-        activeWs = workspaces.find((w) => w.id === savedId) || workspaces[0];
+        // While workspace switching is paused, always lock to the user's primary/normal workspace
+        activeWs = PAUSE_WORKSPACE_SWITCHING
+          ? workspaces[0]
+          : (workspaces.find((w) => w.id === savedId) || workspaces[0]);
       }
 
       userWorkspaces = workspaces || [];

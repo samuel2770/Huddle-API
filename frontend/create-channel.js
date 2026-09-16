@@ -615,31 +615,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Workspace Popover Logic
+  // Workspace Popover Logic (Paused)
   function togglePopover(forceState) {
-    if (!workspacePopover || !switcherTrigger) return;
-    const shouldOpen =
-      typeof forceState === 'boolean'
-        ? forceState
-        : !workspacePopover.classList.contains('open');
-
-    if (shouldOpen) {
-      workspacePopover.classList.add('open');
-      workspacePopover.setAttribute('aria-hidden', 'false');
-      switcherTrigger.classList.add('active');
-      switcherTrigger.setAttribute('aria-expanded', 'true');
-    } else {
-      workspacePopover.classList.remove('open');
-      workspacePopover.setAttribute('aria-hidden', 'true');
-      switcherTrigger.classList.remove('active');
-      switcherTrigger.setAttribute('aria-expanded', 'false');
-    }
+    return; // Workspace switching paused for now
   }
 
   if (switcherTrigger) {
+    switcherTrigger.style.cursor = 'default';
+    const chevron = switcherTrigger.querySelector('.switcher-chevron');
+    if (chevron) chevron.style.display = 'none';
     switcherTrigger.addEventListener('click', (e) => {
       e.stopPropagation();
-      togglePopover();
     });
   }
 
