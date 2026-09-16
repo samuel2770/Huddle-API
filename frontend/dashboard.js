@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let workspaceSyncInterval = null;
   let socket = null;
   let activeChannel = null;
+  let userWorkspaces = [];
   let onlineUsersSet = new Set();
   let typingUsersMap = new Map(); // userId -> timer
   let isTypingSelf = false;
@@ -311,11 +312,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       workspacePopover.setAttribute('aria-hidden', 'false');
       switcherTrigger.classList.add('active');
       switcherTrigger.setAttribute('aria-expanded', 'true');
+      refreshWorkspacesList();
     } else {
       workspacePopover.classList.remove('open');
       workspacePopover.setAttribute('aria-hidden', 'true');
       switcherTrigger.classList.remove('active');
       switcherTrigger.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  async function refreshWorkspacesList() {
+    try {
+      if (!window.HuddleApi || !window.HuddleApi.workspaces) return;
+      const workspaces = await window.HuddleApi.workspaces.list();
+      if (Array.isArray(workspaces)) {
+        userWorkspaces = workspaces;
+        const currentWsId = window.HuddleApi.getActiveWorkspaceId();
+        const activeWs = userWorkspaces.find((w) => w.id === currentWsId) || userWorkspaces[0];
+        if (activeWs) {
+          renderWorkspaceUI(activeWs, userWorkspaces);
+        }
+      }
+    } catch (err) {
+      console.warn('[Huddle] Failed to refresh workspaces list:', err);
     }
   }
 
@@ -2009,10 +2028,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         activeWs = workspaces.find((w) => w.id === savedId) || workspaces[0];
       }
 
+      userWorkspaces = workspaces || [];
+
       if (activeWs) {
         window.HuddleApi.setActiveWorkspaceId(activeWs.id);
         window.HuddleApi.setActiveWorkspaceName(activeWs.name);
-        renderWorkspaceUI(activeWs, workspaces);
+        renderWorkspaceUI(activeWs, userWorkspaces);
         await loadWorkspaceChannels(activeWs.id);
         startBackgroundWorkspaceSync();
       }
@@ -2040,7 +2061,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 4000); // 4s sync check for workspace channel list
   }
 
-  function renderWorkspaceUI(activeWs) {
+  function renderWorkspaceUI(activeWs, workspaces = userWorkspaces) {
     if (!activeWs) return;
 
     document.title = `Huddle — ${activeWs.name}`;
@@ -2071,6 +2092,76 @@ document.addEventListener('DOMContentLoaded', async () => {
           window.showHuddleToast('Workspace ID copied to clipboard!', 'success');
         }
       };
+    }
+
+    // Render list of workspaces to switch between in the popover
+    const wsListEl = document.getElementById('popover-workspaces-list');
+    if (wsListEl && Array.isArray(workspaces)) {
+      wsListEl.innerHTML = '';
+      if (workspaces.length === 0) {
+        wsListEl.innerHTML = '<div style="padding: 6px 8px; font-size: 12px; color: #98A2B3;">No workspaces found</div>';
+      } else {
+        workspaces.forEach((ws) => {
+          const isCurrent = ws.id === activeWs.id;
+          const itemBtn = document.createElement('button');
+          itemBtn.type = 'button';
+          itemBtn.className = `popover-item-btn workspace-switch-item ${isCurrent ? 'active-ws' : ''}`;
+          itemBtn.setAttribute('role', 'menuitem');
+          itemBtn.title = isCurrent ? `${ws.name} (Current Workspace)` : `Switch to ${ws.name}`;
+          itemBtn.style.cssText = `
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: ${isCurrent ? '#F2F4F7' : 'transparent'};
+            border: 1px solid ${isCurrent ? '#EAECF0' : 'transparent'};
+            cursor: pointer;
+            transition: all 0.12s ease;
+            text-align: left;
+            margin-bottom: 2px;
+          `;
+          const initial = (ws.name || 'W').charAt(0).toUpperCase();
+          itemBtn.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
+              <div style="width: 22px; height: 22px; border-radius: 6px; background: ${isCurrent ? '#FF6A00' : '#EAECF0'}; color: ${isCurrent ? '#ffffff' : '#475467'}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0;">
+                ${escapeHtml(initial)}
+              </div>
+              <span style="font-size: 13px; font-weight: ${isCurrent ? '700' : '500'}; color: #101828; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${escapeHtml(ws.name || 'Workspace')}
+              </span>
+            </div>
+            ${isCurrent ? `
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF6A00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-left: 6px;">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            ` : ''}
+          `;
+
+          itemBtn.addEventListener('mouseenter', () => {
+            if (!isCurrent) itemBtn.style.background = '#F9FAFB';
+          });
+          itemBtn.addEventListener('mouseleave', () => {
+            if (!isCurrent) itemBtn.style.background = 'transparent';
+          });
+
+          itemBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePopover(false);
+            if (isCurrent) return;
+
+            window.HuddleApi.setActiveWorkspaceId(ws.id);
+            window.HuddleApi.setActiveWorkspaceName(ws.name);
+            window.showHuddleToast(`Switching to "${ws.name}"...`, 'info');
+            setTimeout(() => {
+              window.location.reload();
+            }, 150);
+          });
+
+          wsListEl.appendChild(itemBtn);
+        });
+      }
     }
   }
 
