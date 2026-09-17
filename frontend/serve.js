@@ -15,7 +15,7 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-  let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
+  let filePath = path.join(__dirname, req.url === '/' ? 'splash.html' : req.url);
   filePath = filePath.split('?')[0];
 
   fs.stat(filePath, (err, stats) => {
