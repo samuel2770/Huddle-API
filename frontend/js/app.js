@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPasswordRequirements();
   initFormValidation();
   initAuthFormSubmit();
+  initHeroImageParallax();
 });
 
 /**
@@ -461,3 +462,91 @@ function getEyeOffIcon() {
     <line x1="1" y1="1" x2="23" y2="23"></line>
   </svg>`;
 }
+
+/**
+ * Hero image parallax: moves the right sidebar image smoothly as the user scrolls
+ * up and down in registration and login, adapting to both small and large scroll ranges.
+ */
+function initHeroImageParallax() {
+  const heroCard = document.querySelector('.hero-image-card') || document.querySelector('.hero-img-wrap');
+  if (!heroCard) return;
+  const heroImg = heroCard.querySelector('img');
+  if (!heroImg) return;
+
+  const formPanel = document.getElementById('form-panel');
+  let ticking = false;
+
+  function update() {
+    let scrolled = 0;
+    let maxScroll = 0;
+
+    if (formPanel) {
+      scrolled = formPanel.scrollTop;
+      maxScroll = formPanel.scrollHeight - formPanel.clientHeight;
+    } else {
+      scrolled = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      maxScroll = Math.max(
+        (document.documentElement.scrollHeight || 0) - window.innerHeight,
+        (document.body.scrollHeight || 0) - window.innerHeight,
+        0
+      );
+    }
+
+    let targetY = 0;
+    if (maxScroll > 4) {
+      const progress = Math.min(Math.max(scrolled / maxScroll, 0), 1);
+      // Maps vertical progress to a 76px displacement: -38px at top, +38px at bottom
+      targetY = (progress - 0.5) * 76;
+    } else if (scrolled > 0) {
+      targetY = Math.min(Math.max((scrolled * 0.4) - 20, -38), 38);
+    }
+
+    heroImg.style.transform = `scale(1.18) translate3d(0, ${targetY.toFixed(2)}px, 0)`;
+    ticking = false;
+  }
+
+  function onScroll() {
+    if (!ticking) {
+      window.requestAnimationFrame(update);
+      ticking = true;
+    }
+  }
+
+  if (formPanel) {
+    formPanel.addEventListener('scroll', onScroll, { passive: true });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  document.addEventListener('scroll', onScroll, { passive: true });
+
+  // Forward wheel events when cursor is over the right pane so scrolling works everywhere
+  heroCard.addEventListener('wheel', (e) => {
+    if (formPanel) {
+      formPanel.scrollTop += e.deltaY;
+    } else {
+      window.scrollBy({ top: e.deltaY, behavior: 'auto' });
+    }
+  }, { passive: true });
+
+  // Subtle mouse drift when screen is tall and native scroll space is small
+  window.addEventListener('mousemove', (e) => {
+    let maxScroll = 0;
+    if (formPanel) {
+      maxScroll = formPanel.scrollHeight - formPanel.clientHeight;
+    } else {
+      maxScroll = Math.max(
+        (document.documentElement.scrollHeight || 0) - window.innerHeight,
+        0
+      );
+    }
+    if (maxScroll <= 20) {
+      const normY = (e.clientY / window.innerHeight) - 0.5;
+      const yShift = normY * 32;
+      heroImg.style.transform = `scale(1.18) translate3d(0, ${yShift.toFixed(2)}px, 0)`;
+    }
+  }, { passive: true });
+
+  // Run on load and after resize
+  window.addEventListener('resize', onScroll, { passive: true });
+  update();
+}
+
