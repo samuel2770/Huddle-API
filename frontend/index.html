@@ -31,8 +31,13 @@
     }
     .hero-img-wrap img {
       width: 100%; height: 100%;
-      object-fit: cover; object-position: center;
+      object-fit: cover;
+      object-position: center 20%;
       display: block;
+      transition: object-position 0.9s ease;
+    }
+    .hero-img-wrap.settled img {
+      object-position: center 30%;
     }
     .hero-img-wrap::after {
       content: '';
