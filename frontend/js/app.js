@@ -320,7 +320,11 @@ async function handleSignup(form) {
     }
   } catch (err) {
     console.error('Signup error:', err);
-    showToast(err.message || 'Could not connect to backend server. Make sure API is running.', 'error');
+    let msg = err.message || 'Registration failed';
+    if (msg === 'EMAIL_TAKEN' || msg.includes('EMAIL_TAKEN')) {
+      msg = 'An account with this email already exists. Please sign in instead.';
+    }
+    showToast(msg, 'error');
   } finally {
     setButtonLoading(submitBtn, false);
   }

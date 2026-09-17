@@ -285,20 +285,20 @@
 
     auth: {
       async signup(fullName, email, password) {
-        let data;
         try {
-          data = await ApiClient.request('/api/v1/auth/signup', {
+          return await ApiClient.request('/api/v1/auth/signup', {
             method: 'POST',
             body: { fullName, email, password },
           });
         } catch (err) {
-          // Fallback to unversioned route
-          data = await ApiClient.request('/auth/signup', {
-            method: 'POST',
-            body: { fullName, email, password },
-          });
+          if (err && err.status === 404) {
+            return await ApiClient.request('/auth/signup', {
+              method: 'POST',
+              body: { fullName, email, password },
+            });
+          }
+          throw err;
         }
-        return data;
       },
 
       async login(email, password) {
@@ -310,15 +310,19 @@
             body: { email, password },
           });
         } catch (err) {
-          data = await ApiClient.request('/auth/login', {
-            method: 'POST',
-            body: { email, password },
-          });
+          if (err && err.status === 404) {
+            data = await ApiClient.request('/auth/login', {
+              method: 'POST',
+              body: { email, password },
+            });
+          } else {
+            throw err;
+          }
         }
 
-        if (data.accessToken) ApiClient.setToken(data.accessToken);
-        if (data.refreshToken) ApiClient.setRefreshToken(data.refreshToken);
-        if (data.user) ApiClient.setUser(data.user);
+        if (data && data.accessToken) ApiClient.setToken(data.accessToken);
+        if (data && data.refreshToken) ApiClient.setRefreshToken(data.refreshToken);
+        if (data && data.user) ApiClient.setUser(data.user);
 
         return data;
       },
