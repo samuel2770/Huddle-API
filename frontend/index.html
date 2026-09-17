@@ -27,21 +27,17 @@
       position: fixed;
       inset: 0;
       z-index: 10;
-      overflow: hidden;
       will-change: left, width;
     }
     .hero-img-wrap img {
       width: 100%; height: 100%;
       object-fit: cover;
-      object-position: center 25%;
+      object-position: center 20%;
       display: block;
-      transform: scale(1.18) translate3d(0, 0px, 0);
-      transform-origin: center center;
-      will-change: transform;
-      transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.4, 1);
+      transition: object-position 0.9s ease;
     }
     .hero-img-wrap.settled img {
-      /* Smoothly handles scroll parallax */
+      object-position: center 30%;
     }
     .hero-img-wrap::after {
       content: '';
@@ -307,52 +303,6 @@
       heroWrap.classList.add('settled');
       // Slide form in
       formPanel.classList.add('visible');
-
-      // ── Parallax: image moves smoothly as the user moves up/down ──
-      var heroImg = heroWrap.querySelector('img');
-      var ticking = false;
-
-      function updateParallax(){
-        var scrolled = formPanel.scrollTop;
-        var maxScroll = formPanel.scrollHeight - formPanel.clientHeight;
-        var targetY = 0;
-
-        if (maxScroll > 5) {
-          var progress = Math.min(Math.max(scrolled / maxScroll, 0), 1);
-          // Moving up in the form (scrolled -> 0, progress -> 0) moves the image
-          // Moving down in the form (progress -> 1) moves the image
-          targetY = (progress - 0.5) * 76;
-        } else if (scrolled > 0) {
-          targetY = Math.min(Math.max((scrolled * 0.4) - 20, -38), 38);
-        }
-
-        heroImg.style.transform = 'scale(1.18) translate3d(0, ' + targetY.toFixed(2) + 'px, 0)';
-        ticking = false;
-      }
-
-      formPanel.addEventListener('scroll', function(){
-        if(!ticking){
-          requestAnimationFrame(updateParallax);
-          ticking = true;
-        }
-      }, { passive: true });
-
-      // Forward wheel events from the right-side image to formPanel so scrolling works everywhere
-      heroWrap.addEventListener('wheel', function(e){
-        formPanel.scrollTop += e.deltaY;
-      }, { passive: true });
-
-      // Gentle vertical drift on mouse movement if vertical scroll space is tight
-      window.addEventListener('mousemove', function(e){
-        var maxScroll = formPanel.scrollHeight - formPanel.clientHeight;
-        if (maxScroll <= 20) {
-          var normY = (e.clientY / window.innerHeight) - 0.5;
-          var yShift = normY * 32;
-          heroImg.style.transform = 'scale(1.18) translate3d(0, ' + yShift.toFixed(2) + 'px, 0)';
-        }
-      }, { passive: true });
-
-      updateParallax();
     },500);
   },3200);
 })();
