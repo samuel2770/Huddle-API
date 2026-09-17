@@ -10,7 +10,10 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
+import { DataSource } from 'typeorm';
 import { ChatEventsService } from './chat-events.service.js';
+import { Channel, ChannelType } from '../channels/entities/channel.entity.js';
+import { ChannelMember } from '../channels/entities/channel-member.entity.js';
 
 interface AuthenticatedSocket extends Socket {
   userId: string;
@@ -34,6 +37,7 @@ export class ChatGateway
   constructor(
     private readonly jwtService: JwtService,
     private readonly chatEventsService: ChatEventsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   afterInit(server: Server): void {
@@ -127,6 +131,32 @@ export class ChatGateway
 
     if (!channelId) {
       return { success: false, error: 'channelId is required' };
+    }
+
+    try {
+      const channelRepo = this.dataSource.getRepository(Channel);
+      const channel = await channelRepo.findOne({ where: { id: channelId } });
+      if (!channel) {
+        return { success: false, error: 'Channel not found' };
+      }
+
+      if (channel.type === ChannelType.DM || channel.type === ChannelType.PRIVATE) {
+        const memberRepo = this.dataSource.getRepository(ChannelMember);
+        const isMember = await memberRepo.findOne({
+          where: { channel_id: channelId, user_id: client.userId },
+        });
+        if (!isMember) {
+          console.warn(
+            `[ChatGateway] Unauthorized join attempt to private/DM channel ${channelId} by user ${client.userId}`,
+          );
+          return {
+            success: false,
+            error: 'Access denied: You are not a member of this conversation',
+          };
+        }
+      }
+    } catch (err: any) {
+      console.error('[ChatGateway] Error verifying channel membership on join:', err?.message);
     }
 
     const roomName = `channel:${channelId}`;

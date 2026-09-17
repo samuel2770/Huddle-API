@@ -21,10 +21,12 @@ export { REDIS_CLIENT } from './redis.constants.js';
           port,
           password,
           username,
-          maxRetriesPerRequest: 3,
+          maxRetriesPerRequest: 1,
+          connectTimeout: 3000,
+          enableOfflineQueue: false,
           retryStrategy: (times: number) => {
-            if (times > 3) return null; // Stop retrying
-            return Math.min(times * 200, 2000);
+            if (times > 1) return null; // Stop retrying if host is unreachable
+            return 500;
           },
           lazyConnect: true,
         });

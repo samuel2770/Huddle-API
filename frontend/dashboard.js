@@ -19,6 +19,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // Immediately display stored user info to prevent dummy placeholder flash
+  const cachedUser = window.HuddleApi?.getUser();
+  if (cachedUser) {
+    updateUserUI(cachedUser);
+  }
+
   // Define robust global toast notification helper
   window.showHuddleToast = function (message, type = 'info') {
     let container = document.querySelector('.toast-container');
@@ -278,11 +284,31 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (dot) {
         if (isOnline) {
           dot.classList.add('online');
+          dot.classList.remove('offline');
         } else {
           dot.classList.remove('online');
+          dot.classList.add('offline');
         }
       }
     });
+
+    // Update active DM header presence status
+    const dmHeaderStatusText = document.getElementById('dm-header-status-text');
+    const dmHeaderStatusDot = document.querySelector('.dm-header-status-row .presence-dot');
+    const dmHeaderPresenceDot = document.getElementById('dm-header-presence-dot');
+    if (activeChannel && activeChannel.type === 'dm' && dmHeaderStatusText) {
+      const currentUser = window.HuddleApi.getUser();
+      const otherMember = (activeChannel.members || []).find((m) => m.user_id !== currentUser?.id) || activeChannel.members?.[0];
+      const teammateId = otherMember?.user?.id || otherMember?.user_id;
+      const isOnline = teammateId && onlineUsersSet.has(teammateId);
+      dmHeaderStatusText.textContent = isOnline ? 'Active now' : 'Offline';
+      if (dmHeaderStatusDot) {
+        dmHeaderStatusDot.className = `presence-dot ${isOnline ? 'online' : 'offline'}`;
+      }
+      if (dmHeaderPresenceDot) {
+        dmHeaderPresenceDot.className = `presence-dot ${isOnline ? 'online' : 'offline'}`;
+      }
+    }
 
     // Update active channel header online count
     const countEl = document.getElementById('channel-online-count-badge');
@@ -952,56 +978,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!dmPickerModal) {
       dmPickerModal = document.createElement('div');
       dmPickerModal.id = 'dm-picker-modal';
-      dmPickerModal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(16, 24, 40, 0.5);
-        backdrop-filter: blur(4px);
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-      `;
+      dmPickerModal.className = 'dm-picker-overlay';
       dmPickerModal.innerHTML = `
-        <div style="background:#ffffff;border-radius:16px;max-width:440px;width:100%;padding:28px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);position:relative;">
-          <button type="button" id="close-dm-modal" style="position:absolute;top:20px;right:20px;background:none;border:none;color:#98A2B3;cursor:pointer;padding:4px;" aria-label="Close">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <div class="dm-picker-card" role="dialog" aria-modal="true" aria-labelledby="dm-picker-title">
+          <button type="button" class="dm-picker-close-btn" id="close-dm-modal" aria-label="Close dialog">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
-          <div style="width:44px;height:44px;border-radius:12px;background:#FFF4ED;color:#FF6A00;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <div class="dm-picker-icon-badge" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
           </div>
-          <h3 style="font-size:19px;font-weight:700;color:#101828;margin-bottom:6px;">Direct Message</h3>
-          <p style="font-size:13.5px;color:#667085;margin-bottom:16px;">Select a teammate to start a conversation.</p>
-          <input
-            type="text"
-            id="dm-search-member-input"
-            placeholder="Search teammates..."
-            style="width:100%;height:42px;padding:0 14px;border:1.5px solid #D0D5DD;border-radius:10px;font-size:14px;outline:none;margin-bottom:14px;"
-          />
-          <div id="dm-members-list-container" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;">
-            <div style="text-align:center;color:#98A2B3;padding:12px;font-size:13px;">Loading teammates...</div>
+          <h3 class="dm-picker-title" id="dm-picker-title">New Direct Message</h3>
+          <p class="dm-picker-subtitle">Select a teammate to start a private, end-to-end confidential conversation.</p>
+          <div class="dm-picker-search-wrap">
+            <svg class="dm-picker-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              class="dm-picker-input"
+              id="dm-search-member-input"
+              placeholder="Search teammates by name, @handle or email..."
+              autocomplete="off"
+            />
+          </div>
+          <div class="dm-picker-list" id="dm-members-list-container">
+            <div style="text-align:center;color:#98A2B3;padding:16px;font-size:13px;">Loading teammates...</div>
           </div>
         </div>
       `;
       document.body.appendChild(dmPickerModal);
 
-      dmPickerModal.querySelector('#close-dm-modal').addEventListener('click', () => {
-        dmPickerModal.style.display = 'none';
-      });
+      const closeBtn = dmPickerModal.querySelector('#close-dm-modal');
+      const closeHandler = () => {
+        dmPickerModal.classList.remove('open');
+      };
+      if (closeBtn) closeBtn.addEventListener('click', closeHandler);
+
       dmPickerModal.addEventListener('click', (e) => {
-        if (e.target === dmPickerModal) dmPickerModal.style.display = 'none';
+        if (e.target === dmPickerModal) closeHandler();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && dmPickerModal.classList.contains('open')) {
+          closeHandler();
+        }
       });
     }
 
-    dmPickerModal.style.display = 'flex';
+    dmPickerModal.classList.add('open');
     const input = dmPickerModal.querySelector('#dm-search-member-input');
     if (input) {
       input.value = '';
-      input.focus();
+      setTimeout(() => input.focus(), 50);
     }
 
     loadTeammatesForDm(activeWsId);
@@ -1020,14 +1054,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (otherMembers.length === 0) {
         container.innerHTML = `
-          <div style="text-align:center;color:#667085;padding:16px;font-size:13px;">
-            No other teammates in this workspace yet. Invite members to chat with them!
+          <div class="dm-picker-empty">
+            No other teammates in this workspace yet. Invite teammates to start direct conversations!
           </div>
         `;
         return;
       }
 
       function renderList(list) {
+        if (list.length === 0) {
+          container.innerHTML = `
+            <div class="dm-picker-empty">
+              No teammates match your search.
+            </div>
+          `;
+          return;
+        }
+
         container.innerHTML = list
           .map((m) => {
             const uId = m.userId || m.id;
@@ -1036,32 +1079,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isOnline = onlineUsersSet.has(uId);
             const initial = name.charAt(0).toUpperCase();
             const avatarHtml = m.avatarUrl
-              ? `<img src="${escapeHtml(m.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
-              : initial;
+              ? `<img src="${escapeHtml(m.avatarUrl)}" alt="" />`
+              : `<div class="initials">${escapeHtml(initial)}</div>`;
 
             return `
-              <div class="dm-member-choice" data-user-id="${escapeHtml(uId)}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background 0.12s ease;border:1px solid #EAECF0;">
-                <div style="position:relative;width:34px;height:34px;border-radius:50%;background:#FFF4ED;color:#FF6A00;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <div class="dm-picker-row" data-user-id="${escapeHtml(uId)}">
+                <div class="dm-picker-row-avatar">
                   ${avatarHtml}
-                  <span class="presence-dot ${isOnline ? 'online' : ''}" style="position:absolute;bottom:-1px;right:-1px;border:2px solid #fff;"></span>
+                  <span class="presence-dot ${isOnline ? 'online' : 'offline'}"></span>
                 </div>
-                <div style="flex:1;">
-                  <div style="font-size:13.5px;font-weight:600;color:#101828;">${escapeHtml(name)}</div>
-                  <div style="font-size:12px;color:#667085;">@${escapeHtml(username)}</div>
+                <div class="dm-picker-row-meta">
+                  <div class="dm-picker-row-name">${escapeHtml(name)}</div>
+                  <div class="dm-picker-row-handle">@${escapeHtml(username)}${m.email ? ` • ${escapeHtml(m.email)}` : ''}</div>
                 </div>
-                <span style="font-size:12px;color:#FF6A00;font-weight:600;">Chat</span>
+                <button type="button" class="dm-picker-row-action">Chat</button>
               </div>
             `;
           })
           .join('');
 
-        container.querySelectorAll('.dm-member-choice').forEach((row) => {
+        container.querySelectorAll('.dm-picker-row').forEach((row) => {
           row.addEventListener('click', async () => {
             const targetId = row.dataset.userId;
             if (!targetId) return;
 
             try {
-              if (dmPickerModal) dmPickerModal.style.display = 'none';
+              if (dmPickerModal) dmPickerModal.classList.remove('open');
               window.showHuddleToast('Opening conversation...', 'info');
               const dmChannel = await window.HuddleApi.channels.createDm(workspaceId, targetId);
               await loadWorkspaceChannels(workspaceId);
@@ -1083,6 +1126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const filtered = otherMembers.filter(
             (m) =>
               (m.fullName && m.fullName.toLowerCase().includes(q)) ||
+              (m.name && m.name.toLowerCase().includes(q)) ||
               (m.username && m.username.toLowerCase().includes(q)) ||
               (m.email && m.email.toLowerCase().includes(q)),
           );
@@ -1090,70 +1134,285 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
       }
     } catch (err) {
-      container.innerHTML = `<div style="color:#F04438;font-size:13px;padding:8px;">Failed to load teammates.</div>`;
+      container.innerHTML = `<div style="color:#F04438;font-size:13px;padding:8px;text-align:center;">Failed to load teammates.</div>`;
     }
+  }
+
+  // ========================================================================
+  // Unified Teammates & Workspace Search Logic (Quick Switcher)
+  // ========================================================================
+  let searchResultsPanel = null;
+  let searchDebounce = null;
+  let cachedWorkspaceChannels = [];
+  let cachedWorkspaceMembers = [];
+
+  async function fetchWorkspaceMembers(workspaceId) {
+    if (!workspaceId) return [];
+    try {
+      const members = await window.HuddleApi.workspaces.getMembers(workspaceId);
+      cachedWorkspaceMembers = members || [];
+      return cachedWorkspaceMembers;
+    } catch (err) {
+      console.warn('[Huddle] Failed to fetch workspace members:', err);
+      return cachedWorkspaceMembers || [];
+    }
+  }
+
+  function activateUnifiedSearch(options = {}) {
+    if (!searchInput) return;
+
+    // Open mobile sidebar drawer if currently hidden on mobile
+    const sidebar = document.getElementById('dashboard-sidebar');
+    const backdrop = document.getElementById('drawer-backdrop');
+    if (sidebar && !sidebar.classList.contains('open') && window.innerWidth < 768) {
+      sidebar.classList.add('open');
+      if (backdrop) backdrop.classList.add('active');
+    }
+
+    // Modern glowing pulse on the search box
+    const wrapper = searchInput.closest('.sidebar-search-wrapper');
+    if (wrapper) {
+      wrapper.classList.remove('pulse-highlight');
+      void wrapper.offsetWidth; // force reflow for smooth re-trigger
+      wrapper.classList.add('pulse-highlight');
+      setTimeout(() => wrapper.classList.remove('pulse-highlight'), 2600);
+    }
+
+    if (options.placeholder) {
+      searchInput.placeholder = options.placeholder;
+    } else {
+      searchInput.placeholder = 'Search teammate or channel...';
+    }
+
+    if (typeof options.query === 'string') {
+      searchInput.value = options.query;
+    }
+
+    searchInput.focus();
+    try {
+      searchInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch {}
+
+    performUnifiedSearch(searchInput.value.trim());
   }
 
   if (sidebarAddDmBtn) {
     sidebarAddDmBtn.addEventListener('click', (e) => {
+      e.preventDefault();
       e.stopPropagation();
-      openDmPickerModal();
+      activateUnifiedSearch({ placeholder: 'Find or message a teammate...' });
     });
   }
-
-  // ========================================================================
-  // Full-Text Workspace Search Logic
-  // ========================================================================
-  let searchResultsPanel = null;
-  let searchDebounce = null;
 
   function initSearchPanel() {
     if (!searchInput) return;
 
+    const container = searchInput.closest('.sidebar-search-container') || searchInput.parentElement;
+    container.style.position = 'relative';
+
     searchResultsPanel = document.createElement('div');
     searchResultsPanel.id = 'sidebar-search-results';
     searchResultsPanel.className = 'search-results-panel';
-    searchInput.parentElement.style.position = 'relative';
-    searchInput.parentElement.appendChild(searchResultsPanel);
+    container.appendChild(searchResultsPanel);
+
+    searchInput.addEventListener('focus', () => {
+      performUnifiedSearch(searchInput.value.trim());
+    });
 
     searchInput.addEventListener('input', () => {
       clearTimeout(searchDebounce);
-      const query = searchInput.value.trim();
-      if (!query) {
-        searchResultsPanel.classList.remove('open');
-        searchResultsPanel.innerHTML = '';
-        return;
-      }
-
-      searchDebounce = setTimeout(async () => {
-        const activeWsId = window.HuddleApi.getActiveWorkspaceId();
-        if (!activeWsId) return;
-
-        try {
-          const res = await window.HuddleApi.search.query(activeWsId, query);
-          renderSearchResults(res);
-        } catch (err) {
-          console.warn('[Huddle Search Error]:', err);
-        }
-      }, 250);
+      searchDebounce = setTimeout(() => {
+        performUnifiedSearch(searchInput.value.trim());
+      }, 150);
     });
 
-    document.addEventListener('click', (e) => {
-      if (!searchInput.contains(e.target) && !searchResultsPanel.contains(e.target)) {
+    // Keyboard navigation (Up/Down/Enter/Escape)
+    searchInput.addEventListener('keydown', (e) => {
+      if (!searchResultsPanel || !searchResultsPanel.classList.contains('open')) return;
+
+      const items = Array.from(searchResultsPanel.querySelectorAll('.search-result-item'));
+      if (items.length === 0) return;
+
+      let currentIndex = items.findIndex((el) => el.classList.contains('selected'));
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (currentIndex >= 0) items[currentIndex].classList.remove('selected');
+        const nextIndex = (currentIndex + 1) % items.length;
+        items[nextIndex].classList.add('selected');
+        items[nextIndex].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (currentIndex >= 0) items[currentIndex].classList.remove('selected');
+        const prevIndex = (currentIndex - 1 + items.length) % items.length;
+        items[prevIndex].classList.add('selected');
+        items[prevIndex].scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (currentIndex >= 0 && items[currentIndex]) {
+          items[currentIndex].click();
+        } else if (items[0]) {
+          items[0].click();
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
         searchResultsPanel.classList.remove('open');
+        searchInput.blur();
+        const wrapper = searchInput.closest('.sidebar-search-wrapper');
+        if (wrapper) wrapper.classList.remove('pulse-highlight');
+      }
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+      if (
+        !searchInput.contains(e.target) &&
+        !searchResultsPanel.contains(e.target) &&
+        (!sidebarAddDmBtn || !sidebarAddDmBtn.contains(e.target))
+      ) {
+        searchResultsPanel.classList.remove('open');
+        const wrapper = searchInput.closest('.sidebar-search-wrapper');
+        if (wrapper) wrapper.classList.remove('pulse-highlight');
       }
     });
   }
 
-  function renderSearchResults(data) {
+  async function performUnifiedSearch(rawQuery = '') {
     if (!searchResultsPanel) return;
-    const channels = data?.channels || [];
-    const messages = data?.messages || [];
 
-    if (channels.length === 0 && messages.length === 0) {
+    const activeWsId = window.HuddleApi.getActiveWorkspaceId();
+    if (!activeWsId) return;
+
+    const currentUser = window.HuddleApi.getUser();
+    const q = rawQuery.trim().toLowerCase();
+    const cleanChanQ = q.replace(/^#/, '');
+
+    if (!cachedWorkspaceMembers || cachedWorkspaceMembers.length === 0) {
+      await fetchWorkspaceMembers(activeWsId);
+    }
+
+    // 1. Teammates search
+    const otherMembers = (cachedWorkspaceMembers || []).filter((m) => {
+      const uId = m.userId || m.id;
+      return uId && uId !== currentUser?.id;
+    });
+
+    const matchedMembers = otherMembers.filter((m) => {
+      if (!q) return true; // Show all teammates if query is empty
+      const fullName = (m.fullName || m.name || '').toLowerCase();
+      const username = (m.username || '').toLowerCase();
+      const email = (m.email || '').toLowerCase();
+      return fullName.includes(q) || username.includes(q) || email.includes(q);
+    });
+
+    const memberResults = matchedMembers.map((m) => {
+      const uId = m.userId || m.id;
+      // Existing 1-on-1 DM channel check
+      const existingDm = (cachedWorkspaceChannels || []).find(
+        (c) =>
+          c.type === 'dm' &&
+          (c.members || []).some(
+            (mem) =>
+              mem.user_id === uId ||
+              mem.userId === uId ||
+              mem.user?.id === uId,
+          ),
+      );
+
+      // Shared channels this person belongs to
+      const sharedChannels = (cachedWorkspaceChannels || []).filter(
+        (c) =>
+          c.type !== 'dm' &&
+          (c.members || []).some(
+            (mem) =>
+              mem.user_id === uId ||
+              mem.userId === uId ||
+              mem.user?.id === uId,
+          ),
+      );
+
+      return {
+        member: m,
+        userId: uId,
+        existingDm,
+        sharedChannels,
+      };
+    });
+
+    // 2. Channels & Groups search
+    const channelMap = new Map();
+
+    // Add shared groups where matched teammates belong
+    memberResults.forEach((res) => {
+      res.sharedChannels.forEach((ch) => {
+        if (!channelMap.has(ch.id)) {
+          channelMap.set(ch.id, {
+            channel: ch,
+            reason: `Shared group with ${res.member.fullName || res.member.username || 'teammate'}`,
+          });
+        }
+      });
+    });
+
+    // Add channels matching by name
+    (cachedWorkspaceChannels || []).forEach((ch) => {
+      if (ch.type !== 'dm') {
+        const nameMatches = cleanChanQ && ch.name.toLowerCase().includes(cleanChanQ);
+        if (nameMatches && !channelMap.has(ch.id)) {
+          channelMap.set(ch.id, {
+            channel: ch,
+            reason: 'Channel',
+          });
+        }
+      }
+    });
+
+    const matchedChannels = Array.from(channelMap.values());
+
+    // 3. Message search (when query >= 2)
+    let matchedMessages = [];
+    if (q.length >= 2) {
+      try {
+        const res = await window.HuddleApi.search.query(activeWsId, q);
+        matchedMessages = res?.messages || [];
+      } catch (err) {
+        console.warn('[Huddle Search Messages Error]:', err);
+      }
+    }
+
+    renderUnifiedSearchResults({
+      memberResults,
+      matchedChannels,
+      matchedMessages,
+      query: rawQuery,
+      activeWsId,
+    });
+  }
+
+  function renderUnifiedSearchResults({
+    memberResults,
+    matchedChannels,
+    matchedMessages,
+    query,
+    activeWsId,
+  }) {
+    if (!searchResultsPanel) return;
+
+    const hasMembers = memberResults && memberResults.length > 0;
+    const hasChannels = matchedChannels && matchedChannels.length > 0;
+    const hasMessages = matchedMessages && matchedMessages.length > 0;
+
+    if (!hasMembers && !hasChannels && !hasMessages) {
       searchResultsPanel.innerHTML = `
-        <div style="padding:12px;color:#98A2B3;font-size:13px;text-align:center;">
-          No matching channels or messages
+        <div style="padding: 24px 16px; text-align: center; color: #667085; font-size: 13px;">
+          <div style="width: 38px; height: 38px; border-radius: 50%; background: #F2F4F7; color: #98A2B3; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <div style="font-weight: 600; color: #101828; margin-bottom: 3px;">No results found</div>
+          <div style="font-size: 12px; color: #98A2B3;">No teammate or channel matched "${escapeHtml(query)}"</div>
         </div>
       `;
       searchResultsPanel.classList.add('open');
@@ -1162,27 +1421,108 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let html = '';
 
-    if (channels.length > 0) {
-      html += `<div class="search-group-title">Channels</div>`;
-      channels.forEach((c) => {
+    // ==========================================
+    // 1. PEOPLE & DIRECT MESSAGES (PERSON FIRST!)
+    // ==========================================
+    if (hasMembers) {
+      html += `
+        <div class="search-group-title">
+          <span>People & Direct Messages</span>
+          <span class="search-group-count">${memberResults.length}</span>
+        </div>
+      `;
+
+      memberResults.forEach((item) => {
+        const m = item.member;
+        const uId = item.userId;
+        const displayName = m.fullName || m.name || m.username || 'Teammate';
+        const username = m.username ? `@${m.username}` : (m.email || '');
+        const isOnline = uId && onlineUsersSet.has(uId);
+        const initial = displayName.charAt(0).toUpperCase();
+        const avatarHtml = m.avatarUrl
+          ? `<img src="${escapeHtml(m.avatarUrl)}" alt="" class="search-result-avatar-thumb" />`
+          : `<div class="search-result-avatar-initials">${escapeHtml(initial)}</div>`;
+
+        const hasExistingDm = !!item.existingDm;
+        const badgeText = hasExistingDm ? 'Direct Message' : 'Start Chat';
+
         html += `
-          <div class="search-result-item" data-channel-id="${escapeHtml(c.id)}">
-            <span style="font-weight:700;color:#98A2B3;">#</span>
-            <span style="font-weight:600;font-size:13px;color:#101828;">${escapeHtml(c.name)}</span>
+          <div class="search-result-item" 
+               data-type="person" 
+               data-user-id="${escapeHtml(uId)}" 
+               data-dm-id="${item.existingDm ? escapeHtml(item.existingDm.id) : ''}">
+            <div class="search-result-avatar-wrap">
+              ${avatarHtml}
+              <span class="presence-dot ${isOnline ? 'online' : 'offline'}"></span>
+            </div>
+            <div class="search-result-meta">
+              <div class="search-result-name-row">
+                <span class="search-result-name">${escapeHtml(displayName)}</span>
+                <span class="search-result-handle">${escapeHtml(username)}</span>
+              </div>
+              <div class="search-result-subtext">
+                ${hasExistingDm ? 'Direct conversation • Jump to message' : 'Workspace teammate • Click to message'}
+              </div>
+            </div>
+            <span class="search-result-badge">${escapeHtml(badgeText)}</span>
           </div>
         `;
       });
     }
 
-    if (messages.length > 0) {
-      html += `<div class="search-group-title">Messages</div>`;
-      messages.forEach((m) => {
+    // ==========================================
+    // 2. CHANNELS & GROUPS (UNDER THE PERSON!)
+    // ==========================================
+    if (hasChannels) {
+      html += `
+        <div class="search-group-title">
+          <span>Channels & Groups</span>
+          <span class="search-group-count">${matchedChannels.length}</span>
+        </div>
+      `;
+
+      matchedChannels.forEach(({ channel, reason }) => {
+        const memberCount = channel.members?.length || 0;
+        html += `
+          <div class="search-result-item" data-type="channel" data-channel-id="${escapeHtml(channel.id)}">
+            <span class="search-result-prefix">#</span>
+            <div class="search-result-meta">
+              <div class="search-result-name-row">
+                <span class="search-result-name">${escapeHtml(channel.name)}</span>
+              </div>
+              <div class="search-result-subtext">
+                ${escapeHtml(reason)}${memberCount > 0 ? ` • ${memberCount} members` : ''}
+              </div>
+            </div>
+            <span class="search-result-badge">Open</span>
+          </div>
+        `;
+      });
+    }
+
+    // ==========================================
+    // 3. MESSAGES (IF ANY)
+    // ==========================================
+    if (hasMessages) {
+      html += `
+        <div class="search-group-title">
+          <span>Messages</span>
+          <span class="search-group-count">${matchedMessages.length}</span>
+        </div>
+      `;
+
+      matchedMessages.forEach((m) => {
         const sender = m.sender?.full_name || 'Teammate';
         const chanName = m.channel?.name || 'channel';
         html += `
-          <div class="search-result-item" data-channel-id="${escapeHtml(m.channel_id || m.channel?.id)}" style="flex-direction:column;align-items:flex-start;gap:2px;">
-            <div style="font-size:11.5px;color:#FF6A00;font-weight:600;">#${escapeHtml(chanName)} • ${escapeHtml(sender)}</div>
-            <div style="font-size:13px;color:#344054;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;">
+          <div class="search-result-item" 
+               data-type="message" 
+               data-channel-id="${escapeHtml(m.channel_id || m.channel?.id)}"
+               style="flex-direction: column; align-items: flex-start; gap: 3px;">
+            <div style="font-size: 11.5px; color: #FF6A00; font-weight: 600;">
+              #${escapeHtml(chanName)} • ${escapeHtml(sender)}
+            </div>
+            <div style="font-size: 12.5px; color: #344054; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
               ${escapeHtml(m.content || '')}
             </div>
           </div>
@@ -1190,20 +1530,78 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
+    // Keyboard navigation footer hint
+    html += `
+      <div class="search-panel-hint">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> to navigate</span>
+        <span><kbd>Enter</kbd> to select</span>
+        <span><kbd>Esc</kbd> to close</span>
+      </div>
+    `;
+
     searchResultsPanel.innerHTML = html;
     searchResultsPanel.classList.add('open');
 
+    // Attach click handlers
     searchResultsPanel.querySelectorAll('.search-result-item').forEach((item) => {
       item.addEventListener('click', async () => {
-        const cId = item.dataset.channelId;
+        const type = item.dataset.type;
         searchResultsPanel.classList.remove('open');
         searchInput.value = '';
+        searchInput.placeholder = 'Search';
         closeMobileDrawer();
-        if (cId) {
+
+        const wrapper = searchInput.closest('.sidebar-search-wrapper');
+        if (wrapper) wrapper.classList.remove('pulse-highlight');
+
+        if (type === 'person') {
+          const targetUserId = item.dataset.userId;
+          const dmId = item.dataset.dmId;
+
+          // If DM already exists, switch directly to it
+          if (dmId) {
+            const existingChannel = (cachedWorkspaceChannels || []).find((c) => c.id === dmId);
+            if (existingChannel) {
+              document.querySelectorAll('.sidebar-channel-item').forEach((el) => el.classList.remove('active'));
+              const sideEl = document.querySelector(`.sidebar-channel-item[data-channel-id="${dmId}"]`);
+              if (sideEl) sideEl.classList.add('active');
+              window.HuddleApi.setActiveChannelId(dmId);
+              renderChannelMainView(existingChannel);
+              return;
+            }
+          }
+
+          // Otherwise, create the direct message conversation
           try {
-            const ch = await window.HuddleApi.channels.get(cId);
-            renderChannelMainView(ch);
-          } catch {}
+            window.showHuddleToast('Opening conversation...', 'info');
+            const newDm = await window.HuddleApi.channels.createDm(activeWsId, targetUserId);
+            await loadWorkspaceChannels(activeWsId);
+            document.querySelectorAll('.sidebar-channel-item').forEach((el) => el.classList.remove('active'));
+            const sideEl = document.querySelector(`.sidebar-channel-item[data-channel-id="${newDm.id}"]`);
+            if (sideEl) sideEl.classList.add('active');
+            window.HuddleApi.setActiveChannelId(newDm.id);
+            renderChannelMainView(newDm);
+          } catch (err) {
+            console.error('[Huddle DM Open Error]:', err);
+            window.showHuddleToast(err.message || 'Failed to start conversation', 'error');
+          }
+        } else if (type === 'channel' || type === 'message') {
+          const cId = item.dataset.channelId;
+          if (cId) {
+            const chan = (cachedWorkspaceChannels || []).find((c) => c.id === cId);
+            if (chan) {
+              document.querySelectorAll('.sidebar-channel-item').forEach((el) => el.classList.remove('active'));
+              const sideEl = document.querySelector(`.sidebar-channel-item[data-channel-id="${cId}"]`);
+              if (sideEl) sideEl.classList.add('active');
+              window.HuddleApi.setActiveChannelId(cId);
+              renderChannelMainView(chan);
+            } else {
+              try {
+                const fetched = await window.HuddleApi.channels.get(cId);
+                renderChannelMainView(fetched);
+              } catch {}
+            }
+          }
         }
       });
     });
@@ -1221,9 +1619,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       const channels = await window.HuddleApi.channels.list(workspaceId);
+      cachedWorkspaceChannels = channels || [];
       renderChannelsList(channels);
+      // Pre-fetch workspace members in background for instantaneous search
+      fetchWorkspaceMembers(workspaceId);
     } catch (err) {
       console.warn('[Huddle] Failed to fetch channels:', err);
+      cachedWorkspaceChannels = [];
       renderChannelsList([]);
     }
   }
@@ -1325,12 +1727,20 @@ document.addEventListener('DOMContentLoaded', async () => {
           li.classList.add('active');
         }
 
+        const initial = (displayName || 'T').charAt(0).toUpperCase();
+        const avatarHtml = teammate?.avatar_url
+          ? `<img src="${escapeHtml(teammate.avatar_url)}" alt="" class="sidebar-dm-avatar-thumb" />`
+          : `<div class="sidebar-dm-avatar-initials">${escapeHtml(initial)}</div>`;
+
         const link = document.createElement('a');
         link.href = '#';
-        link.className = 'sidebar-channel-link';
+        link.className = 'sidebar-dm-link';
         link.innerHTML = `
-          <span class="presence-dot ${isOnline ? 'online' : ''}"></span>
-          <span class="channel-link-name channel-name-text">${escapeHtml(displayName)}</span>
+          <div class="sidebar-dm-avatar-wrap">
+            ${avatarHtml}
+            <span class="presence-dot ${isOnline ? 'online' : 'offline'}"></span>
+          </div>
+          <span class="sidebar-dm-name">${escapeHtml(displayName)}</span>
         `;
 
         link.addEventListener('click', (e) => {
@@ -1395,59 +1805,122 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     mainArea.innerHTML = `
       <div style="display:flex;flex-direction:column;height:100%;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;">
-        <!-- Channel Header -->
-        <header style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;flex:1;">
-            <span class="channel-header-workspace-badge" style="display:inline-flex;padding:3px 8px;border-radius:6px;background:#FFF4ED;color:#FF6A00;font-size:12px;font-weight:700;">
-              ${escapeHtml(window.HuddleApi.getActiveWorkspaceName() || 'Workspace')}
-            </span>
-            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
-              ${isDm ? `<span class="presence-dot ${dmTeammate?.id && onlineUsersSet.has(dmTeammate.id) ? 'online' : ''}" style="width:10px;height:10px;"></span>` : ''}
-              <span style="font-size:18px;font-weight:700;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(channelTitle)}</span>
+        <!-- Header -->
+        ${
+          isDm
+            ? `
+          <header class="dm-header-container">
+            <div class="dm-header-left">
+              <div class="dm-header-avatar-wrap">
+                ${
+                  dmTeammate?.avatar_url
+                    ? `<img src="${escapeHtml(dmTeammate.avatar_url)}" alt="" class="dm-header-avatar-img" />`
+                    : `<div class="dm-header-avatar-initials">${escapeHtml((channelTitle || 'T').charAt(0).toUpperCase())}</div>`
+                }
+                <span class="presence-dot ${dmTeammate?.id && onlineUsersSet.has(dmTeammate.id) ? 'online' : 'offline'}" id="dm-header-presence-dot"></span>
+              </div>
+              <div class="dm-header-info">
+                <div class="dm-header-title-row">
+                  <span class="dm-header-title">${escapeHtml(channelTitle)}</span>
+                  ${dmTeammate?.username ? `<span class="dm-header-handle">@${escapeHtml(dmTeammate.username)}</span>` : ''}
+                  <span class="dm-privacy-pill" title="End-to-end private conversation. Only you and this teammate have access.">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    Direct Message
+                  </span>
+                </div>
+                <div class="dm-header-status-row">
+                  <span class="presence-dot ${dmTeammate?.id && onlineUsersSet.has(dmTeammate.id) ? 'online' : 'offline'}"></span>
+                  <span id="dm-header-status-text">${dmTeammate?.id && onlineUsersSet.has(dmTeammate.id) ? 'Active now' : 'Offline'}</span>
+                </div>
+              </div>
             </div>
-            ${channel.topic ? `<span style="font-size:13px;color:#667085;border-left:1px solid #EAECF0;padding-left:8px;">${escapeHtml(channel.topic)}</span>` : ''}
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            ${
-              !isDm
-                ? `
-                <button type="button" id="channel-members-count-btn" class="channel-member-pill" title="View channel members">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                  <span id="channel-members-count-text">Members</span>
-                  <span id="channel-online-count-badge" style="font-size:11px;color:#12B76A;font-weight:600;margin-left:4px;"></span>
-                </button>
-                <button type="button" id="channel-invite-btn" title="Add user to #${escapeHtml(channel.name)}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#FF6A00;color:#ffffff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s ease;">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="8.5" cy="7.5" r="4"></circle>
-                    <line x1="20" y1="8" x2="20" y2="14"></line>
-                    <line x1="23" y1="11" x2="17" y2="11"></line>
-                  </svg>
-                  <span>+ Add</span>
-                </button>
-              `
-                : ''
-            }
-          </div>
-        </header>
+            <div class="dm-header-right">
+              <button type="button" class="dm-profile-btn" id="dm-view-profile-btn" title="View teammate profile">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>View Profile</span>
+              </button>
+            </div>
+          </header>
+        `
+            : `
+          <header style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #EAECF0;background:#ffffff;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;flex:1;">
+              <span class="channel-header-workspace-badge" style="display:inline-flex;padding:3px 8px;border-radius:6px;background:#FFF4ED;color:#FF6A00;font-size:12px;font-weight:700;">
+                ${escapeHtml(window.HuddleApi.getActiveWorkspaceName() || 'Workspace')}
+              </span>
+              <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                <span style="font-size:18px;font-weight:700;color:#101828;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(channelTitle)}</span>
+              </div>
+              ${channel.topic ? `<span style="font-size:13px;color:#667085;border-left:1px solid #EAECF0;padding-left:8px;">${escapeHtml(channel.topic)}</span>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button type="button" id="channel-members-count-btn" class="channel-member-pill" title="View channel members">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span id="channel-members-count-text">Members</span>
+                <span id="channel-online-count-badge" style="font-size:11px;color:#12B76A;font-weight:600;margin-left:4px;"></span>
+              </button>
+              <button type="button" id="channel-invite-btn" title="Add user to #${escapeHtml(channel.name)}" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#FF6A00;color:#ffffff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s ease;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="8.5" cy="7.5" r="4"></circle>
+                  <line x1="20" y1="8" x2="20" y2="14"></line>
+                  <line x1="23" y1="11" x2="17" y2="11"></line>
+                </svg>
+                <span>+ Add</span>
+              </button>
+            </div>
+          </header>
+        `
+        }
 
         <!-- Channel Chat Messages Area -->
         <div id="channel-messages-container" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:12px;">
           <!-- Welcome Box -->
-          <div style="background:#F9FAFB;border:1px solid #EAECF0;border-radius:12px;padding:18px 22px;margin-bottom:8px;">
-            <div style="font-size:22px;margin-bottom:4px;">${isDm ? '💬' : '👋'}</div>
-            <h3 style="font-size:16px;font-weight:700;color:#101828;margin-bottom:4px;">${escapeHtml(channelTitle)}</h3>
-            <p style="font-size:13.5px;color:#667085;line-height:1.5;">${
-              isDm
-                ? `This is your direct message conversation with ${escapeHtml(channelTitle)}.`
-                : `This is the start of #${escapeHtml(channel.name)}. Share messages and collaborate.`
-            }</p>
-          </div>
+          ${
+            isDm
+              ? `
+            <div class="dm-welcome-hero">
+              <div class="dm-welcome-avatar-wrap">
+                ${
+                  dmTeammate?.avatar_url
+                    ? `<img src="${escapeHtml(dmTeammate.avatar_url)}" alt="" class="dm-welcome-avatar-img" />`
+                    : `<div class="dm-welcome-avatar-initials">${escapeHtml((channelTitle || 'T').charAt(0).toUpperCase())}</div>`
+                }
+                <span class="presence-dot ${dmTeammate?.id && onlineUsersSet.has(dmTeammate.id) ? 'online' : 'offline'}"></span>
+              </div>
+              <h3 class="dm-welcome-title">${escapeHtml(channelTitle)}</h3>
+              <p class="dm-welcome-subtitle">
+                This conversation is strictly private between you and <strong>${escapeHtml(channelTitle)}</strong>.
+                Messages and attachments shared here are end-to-end confidential and cannot be read by anyone else in the workspace.
+              </p>
+              <div class="dm-security-badge">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span>End-to-End Private & Encrypted in Transit — Workspace Admins cannot access your DMs.</span>
+              </div>
+            </div>
+          `
+              : `
+            <div style="background:#F9FAFB;border:1px solid #EAECF0;border-radius:12px;padding:18px 22px;margin-bottom:8px;">
+              <div style="font-size:22px;margin-bottom:4px;">👋</div>
+              <h3 style="font-size:16px;font-weight:700;color:#101828;margin-bottom:4px;">${escapeHtml(channelTitle)}</h3>
+              <p style="font-size:13.5px;color:#667085;line-height:1.5;">This is the start of #${escapeHtml(channel.name)}. Share messages and collaborate.</p>
+            </div>
+          `
+          }
 
           <!-- Messages Stream with Skeletons initially -->
           <div id="messages-list" style="display:flex;flex-direction:column;gap:8px;flex:1;">
@@ -2128,7 +2601,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
 
-    loadChannelMembers();
+    const dmProfileBtn = document.getElementById('dm-view-profile-btn');
+    if (dmProfileBtn && dmTeammate) {
+      dmProfileBtn.addEventListener('click', () => {
+        const isOnline = dmTeammate.id && onlineUsersSet.has(dmTeammate.id);
+        const details = [
+          `Name: ${dmTeammate.full_name || dmTeammate.username || 'Teammate'}`,
+          `Username: @${dmTeammate.username || 'user'}`,
+          `Email: ${dmTeammate.email || 'Not available'}`,
+          `Status: ${isOnline ? 'Active now' : 'Offline'}`,
+          `\n🔒 Security: This conversation is strictly 1-on-1 private. Only you and this teammate have access to messages and shared media.`
+        ].join('\n');
+        showActionDialog(`Teammate Profile`, details);
+      });
+    }
+
+    if (!isDm) {
+      loadChannelMembers();
+    }
 
     // Typing emission listener
     if (chatInput) {
@@ -2670,32 +3160,47 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateUserUI(user) {
     if (!user) return;
 
-    const avatarInitial = (user.fullName || 'U').charAt(0).toUpperCase();
+    const displayName = user.fullName || user.full_name || 'User';
+    const avatarInitial = displayName.charAt(0).toUpperCase();
+    const rawUsername = user.username || '';
+    const handle = rawUsername
+      ? (rawUsername.startsWith('@') ? rawUsername : `@${rawUsername}`)
+      : (user.email ? `@${user.email.split('@')[0]}` : '@user');
+    const email = user.email || '';
 
-    // 1. Sidebar bottom avatar & names
-    const sidebarAvatarEl = document.getElementById('sidebar-user-avatar');
+    // 1. Sidebar bottom avatar & personal details
+    const sidebarAvatarEl =
+      document.getElementById('sidebar-user-avatar') ||
+      document.getElementById('sidebar-user-avatar-circle');
     const sidebarNameEl = document.getElementById('sidebar-user-name');
-    const sidebarRoleEl = document.getElementById('sidebar-user-role');
+    const sidebarHandleEl = document.getElementById('sidebar-user-handle');
+    const sidebarEmailEl = document.getElementById('sidebar-user-email');
 
     if (sidebarAvatarEl) {
       if (user.avatarUrl && user.avatarUrl.trim().length > 0) {
-        sidebarAvatarEl.innerHTML = `<img src="${escapeHtml(user.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
+        sidebarAvatarEl.innerHTML = `<img src="${escapeHtml(user.avatarUrl)}" alt="${escapeHtml(displayName)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
       } else {
-        sidebarAvatarEl.innerHTML = escapeHtml(avatarInitial);
+        sidebarAvatarEl.innerHTML = `<span style="font-weight:700;font-size:14px;color:#ffffff;">${escapeHtml(avatarInitial)}</span>`;
       }
     }
 
-    if (sidebarNameEl) sidebarNameEl.textContent = user.fullName || 'User';
-    if (sidebarRoleEl) sidebarRoleEl.textContent = `@${user.username || 'username'}`;
+    if (sidebarNameEl) sidebarNameEl.textContent = displayName;
+    if (sidebarHandleEl) sidebarHandleEl.textContent = handle;
+    if (sidebarEmailEl) {
+      sidebarEmailEl.textContent = email;
+      sidebarEmailEl.title = email;
+    }
 
     // 2. Mobile top bar avatar
-    const mobileAvatarEl = document.querySelector('.mobile-avatar');
+    const mobileAvatarEl =
+      document.querySelector('.mobile-avatar') ||
+      document.getElementById('mobile-top-avatar');
     if (mobileAvatarEl) {
-      mobileAvatarEl.title = user.fullName || 'User';
+      mobileAvatarEl.title = displayName;
       if (user.avatarUrl && user.avatarUrl.trim().length > 0) {
-        mobileAvatarEl.innerHTML = `<img src="${escapeHtml(user.avatarUrl)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
+        mobileAvatarEl.innerHTML = `<img src="${escapeHtml(user.avatarUrl)}" alt="${escapeHtml(displayName)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`;
       } else {
-        mobileAvatarEl.innerHTML = escapeHtml(avatarInitial);
+        mobileAvatarEl.innerHTML = `<span style="font-weight:700;font-size:13px;color:#ffffff;">${escapeHtml(avatarInitial)}</span>`;
       }
     }
   }
@@ -2771,11 +3276,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!activeWsId) return;
 
         const channels = await window.HuddleApi.channels.list(activeWsId);
-        if (channels && sidebarChannelsList) {
-          const newChannelIds = channels.map((c) => c.id).join(',');
-          if (sidebarChannelsList.dataset.channelIds !== newChannelIds) {
-            sidebarChannelsList.dataset.channelIds = newChannelIds;
-            renderChannelsList(channels);
+        if (channels) {
+          cachedWorkspaceChannels = channels;
+          if (sidebarChannelsList) {
+            const newChannelIds = channels.map((c) => c.id).join(',');
+            if (sidebarChannelsList.dataset.channelIds !== newChannelIds) {
+              sidebarChannelsList.dataset.channelIds = newChannelIds;
+              renderChannelsList(channels);
+            }
           }
         }
       } catch {}

@@ -253,6 +253,20 @@ describe('ChannelsService', () => {
         service.findOne('chan-priv', 'intruder-id'),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    it('should throw ForbiddenException if non-participant accesses DM channel', async () => {
+      const channel = {
+        id: 'chan-dm',
+        type: ChannelType.DM,
+        created_by: 'user-1',
+        members: [{ user_id: 'user-1' }, { user_id: 'user-2' }],
+      };
+      mockChannelRepo.findOne.mockResolvedValue(channel);
+
+      await expect(
+        service.findOne('chan-dm', 'outsider-id'),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 
   describe('addMember', () => {
@@ -298,6 +312,19 @@ describe('ChannelsService', () => {
       await expect(
         service.addMember('chan-1', 'existing-user', 'caller-id'),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('should throw BadRequestException when adding members to a DM channel', async () => {
+      mockChannelRepo.findOne.mockResolvedValue({
+        id: 'chan-dm',
+        is_archived: false,
+        type: ChannelType.DM,
+        members: [{ user_id: 'user-1' }, { user_id: 'user-2' }],
+      });
+
+      await expect(
+        service.addMember('chan-dm', 'user-3', 'user-1'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

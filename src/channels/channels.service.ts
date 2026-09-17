@@ -226,7 +226,14 @@ export class ChannelsService {
       throw new NotFoundException(`Channel with ID ${channelId} not found`);
     }
 
-    if (channel.type !== ChannelType.PUBLIC) {
+    if (channel.type === ChannelType.DM) {
+      const isMember = channel.members?.some((m) => m.user_id === userId);
+      if (!isMember) {
+        throw new ForbiddenException(
+          'You are not a participant of this direct message',
+        );
+      }
+    } else if (channel.type !== ChannelType.PUBLIC) {
       const isMember = channel.members?.some((m) => m.user_id === userId);
       const isCreator = channel.created_by === userId;
 
@@ -325,6 +332,12 @@ export class ChannelsService {
     if (channel.is_archived) {
       throw new BadRequestException(
         'Cannot add members to an archived channel',
+      );
+    }
+
+    if (channel.type === ChannelType.DM) {
+      throw new BadRequestException(
+        'Direct messages are strictly private 1-on-1 conversations and cannot have members added',
       );
     }
 
@@ -453,6 +466,12 @@ export class ChannelsService {
     if (channel.is_archived) {
       throw new BadRequestException(
         'Cannot add members to an archived channel',
+      );
+    }
+
+    if (channel.type === ChannelType.DM) {
+      throw new BadRequestException(
+        'Direct messages are strictly private 1-on-1 conversations and cannot have members added',
       );
     }
 
