@@ -3,169 +3,307 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign Up | Huddle</title>
+  <title>Huddle — Get Started</title>
   <meta name="description" content="Set up Huddle for your team. Real-time team collaboration, channels, messaging and presence tracking.">
-  <link rel="stylesheet" href="css/styles.css">
   <link rel="icon" type="image/svg+xml" href="images/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #FF7700;
+      --dark:   #202234;
+      --sub:    #64748b;
+      --border: #e2e8f0;
+      --error:  #e63946;
+      --sans:   'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --serif:  'Lora', Georgia, serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+
+    /* ── Hero image: full-screen during splash, morphs to right half ── */
+    .hero-img-wrap {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      will-change: left, width;
+    }
+    .hero-img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: center;
+      display: block;
+    }
+    .hero-img-wrap::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: rgba(17,24,39,0.52);
+      transition: opacity 0.8s ease;
+    }
+    .hero-img-wrap.settled::after { opacity: 0; }
+    .hero-img-wrap.morph {
+      transition: left 0.9s cubic-bezier(.77,0,.18,1),
+                  width 0.9s cubic-bezier(.77,0,.18,1);
+    }
+
+    /* ── Splash logo ── */
+    #splash-logo {
+      position: fixed; inset: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .logo-word { position: relative; display: inline-flex; align-items: baseline; }
+    .letter {
+      font-size: clamp(56px,9vw,96px); font-weight: 800; color: #fff;
+      letter-spacing: -3px; line-height: 1; display: inline-block;
+      opacity: 0; transform: translateY(22px);
+      text-shadow: 0 2px 24px rgba(0,0,0,.4);
+    }
+    .letter:nth-child(1){animation:dropIn .32s cubic-bezier(.22,.61,.36,1) .9s  forwards;}
+    .letter:nth-child(2){animation:dropIn .32s cubic-bezier(.22,.61,.36,1) 1.15s forwards;}
+    .letter:nth-child(3){animation:dropIn .32s cubic-bezier(.22,.61,.36,1) 1.40s forwards;}
+    .letter:nth-child(4){animation:dropIn .32s cubic-bezier(.22,.61,.36,1) 1.65s forwards;}
+    .letter:nth-child(5){animation:dropIn .32s cubic-bezier(.22,.61,.36,1) 1.90s forwards;}
+    .letter:nth-child(6){animation:dropIn .32s cubic-bezier(.22,.61,.36,1) 2.15s forwards;}
+    @keyframes dropIn { to { opacity:1; transform:translateY(0); } }
+    .dot {
+      width: clamp(10px,1.4vw,15px); height: clamp(10px,1.4vw,15px);
+      border-radius: 50%; background: var(--accent);
+      position: absolute; left: 0; bottom: clamp(4px,.6vw,7px);
+      animation: dotGlow .6s ease-in-out .1s 3 alternate, dotRoll 1.5s cubic-bezier(.4,0,.2,1) .9s forwards;
+    }
+    @keyframes dotGlow {
+      from { box-shadow: 0 0 14px 4px rgba(255,119,0,.5),  0 0 40px 12px rgba(255,119,0,.2); }
+      to   { box-shadow: 0 0 28px 10px rgba(255,119,0,.8), 0 0 70px 24px rgba(255,119,0,.35); }
+    }
+    @keyframes dotRoll {
+      0%  { left:0;                    box-shadow:0 0 20px 6px rgba(255,119,0,.6); }
+      80% { left:var(--roll-end,80%);  box-shadow:0 0 20px 6px rgba(255,119,0,.6); }
+      100%{ left:var(--dot-final,72%); box-shadow:0 0 28px 9px rgba(255,119,0,.85); }
+    }
+    #splash-logo.hide { animation: fadeOut .5s ease forwards; }
+    @keyframes fadeOut { to { opacity:0; } }
+
+    /* ── Form panel ── */
+    #form-panel {
+      position: fixed; left:0; top:0; width:50%; height:100%;
+      background:#fff; z-index:5; overflow-y:auto;
+      display:flex; flex-direction:column;
+      transform:translateX(-100%);
+      transition:transform 0.9s cubic-bezier(.77,0,.18,1);
+    }
+    #form-panel.visible { transform:translateX(0); }
+    .form-inner {
+      width:100%; max-width:460px; min-height:100%;
+      margin:0 auto; padding:44px 40px 32px;
+      display:flex; flex-direction:column; justify-content:space-between;
+    }
+    .auth-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+    .brand-logo { font-family:var(--serif); font-size:28px; font-weight:700; color:var(--dark); text-decoration:none; letter-spacing:-.6px; display:inline-flex; align-items:baseline; }
+    .brand-dot { color:var(--accent); margin-left:1px; font-weight:800; }
+    .locale { font-size:13px; font-weight:600; color:#475569; letter-spacing:.6px; cursor:pointer; padding:6px 10px; border-radius:8px; transition:background .15s; }
+    .locale:hover { background:#f1f5f9; }
+    .auth-body { flex:1; display:flex; flex-direction:column; justify-content:center; }
+    .auth-heading { font-family:var(--serif); font-size:34px; font-weight:700; color:var(--dark); letter-spacing:-.6px; line-height:1.18; margin-bottom:8px; }
+    .auth-subheading { font-size:14.5px; color:var(--sub); line-height:1.5; margin-bottom:28px; }
+    .form-group { margin-bottom:18px; }
+    .form-label { display:block; font-size:13.5px; font-weight:600; color:var(--dark); margin-bottom:7px; }
+    .asterisk { color:var(--accent); margin-left:2px; }
+    .input-wrap { position:relative; display:flex; align-items:center; }
+    .input-icon { position:absolute; left:14px; color:#94a3b8; display:flex; pointer-events:none; }
+    .form-input {
+      width:100%; padding:11px 14px 11px 42px;
+      border:1.5px solid var(--border); border-radius:10px;
+      font-size:14.5px; font-family:var(--sans); color:var(--dark);
+      background:#fff; outline:none;
+      transition:border-color .16s, box-shadow .16s;
+    }
+    .form-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,119,0,.13); }
+    .toggle-pw { position:absolute; right:12px; background:none; border:none; cursor:pointer; color:#94a3b8; display:flex; }
+    .pw-reqs { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .req-chip { font-size:12px; font-weight:500; padding:4px 10px; border-radius:20px; background:#f1f5f9; color:var(--sub); display:inline-flex; align-items:center; gap:5px; transition:all .18s; }
+    .req-chip.met { background:#ecfdf5; color:#059669; }
+    .req-icon { font-size:11px; }
+    .submit-btn {
+      width:100%; padding:13px; margin-top:4px;
+      background:var(--accent); color:#fff; border:none; border-radius:10px;
+      font-size:15px; font-weight:700; font-family:var(--sans);
+      cursor:pointer; transition:background .18s, transform .1s;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .submit-btn:hover:not(:disabled) { background:#e0600d; }
+    .submit-btn:active:not(:disabled) { transform:scale(.98); }
+    .submit-btn:disabled { background:#f1f2f6; color:#94a3b8; cursor:not-allowed; }
+    .btn-spinner { width:16px; height:16px; border:2.5px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:none; }
+    .submit-btn.loading .btn-spinner { display:block; }
+    .submit-btn.loading .btn-text { opacity:.6; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .auth-switch { margin-top:14px; font-size:13.5px; color:var(--sub); text-align:center; }
+    .auth-switch a { color:var(--accent); font-weight:600; text-decoration:none; }
+    .auth-switch a:hover { text-decoration:underline; }
+    .auth-footer { font-size:12px; color:#94a3b8; text-align:center; padding-top:16px; }
+    .error-banner { display:none; align-items:center; gap:10px; padding:12px 16px; background:#fef2f2; border:1px solid #fecaca; border-radius:10px; margin-bottom:18px; color:var(--error); font-size:13.5px; font-weight:500; }
+    .error-banner.visible { display:flex; }
+    .password-requirements { display:none; }
+    /* Ambient particles */
+    .particle { position:fixed; border-radius:50%; background:radial-gradient(circle,rgba(255,119,0,.1) 0%,transparent 70%); pointer-events:none; z-index:15; animation:rise linear infinite; }
+    @keyframes rise { from{transform:translateY(0);opacity:0;} 8%{opacity:1;} 92%{opacity:1;} to{transform:translateY(-110vh);opacity:0;} }
+    /* Mobile */
+    @media(max-width:768px){
+      #form-panel { width:100%; }
+      .hero-img-wrap.settled { display:none; }
+    }
+  </style>
 </head>
 <body>
 
-  <div class="page-wrapper">
-    <!-- Left Column: Form Section -->
-    <div class="auth-left-pane">
-      <!-- Top Brand Header -->
-      <header class="auth-header">
-        <a href="index.html" class="brand-logo" aria-label="Huddle Home">
-          huddle<span class="dot">•</span>
-        </a>
-        <div class="locale-indicator" role="button" tabindex="0" title="Language selection">
-          ENG US
+<div class="hero-img-wrap" id="heroWrap">
+  <img
+    src="images/hero-bg.jpg"
+    srcset="images/hero-bg.jpg 1600w, images/side-image.jpg 800w"
+    sizes="(max-width:768px) 100vw, 50vw"
+    alt="Two team members collaborating on a laptop in a bright modern office"
+    fetchpriority="high"
+    loading="eager"
+  >
+</div>
+
+<div id="splash-logo">
+  <div class="logo-word" id="logoWord">
+    <span class="letter">h</span>
+    <span class="letter">u</span>
+    <span class="letter">d</span>
+    <span class="letter">d</span>
+    <span class="letter">l</span>
+    <span class="letter">e</span>
+    <span class="dot" id="splashDot"></span>
+  </div>
+</div>
+
+<div id="form-panel">
+  <div class="form-inner">
+    <header class="auth-header">
+      <a href="index.html" class="brand-logo" aria-label="Huddle Home">huddle<span class="brand-dot">•</span></a>
+      <div class="locale" role="button" tabindex="0" title="Language selection">ENG US</div>
+    </header>
+
+    <div class="auth-body">
+      <h1 class="auth-heading">Hi there!</h1>
+      <p class="auth-subheading">Set up Huddle for your team.</p>
+
+      <div class="error-banner" id="errorBanner" role="alert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <span id="errorMsg">Something went wrong.</span>
+      </div>
+
+      <form id="signupForm" class="auth-form" novalidate>
+        <div class="form-group">
+          <label for="name" class="form-label">Name <span class="asterisk">*</span></label>
+          <div class="input-wrap">
+            <span class="input-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></span>
+            <input type="text" id="name" name="fullName" class="form-input" placeholder="Grace Abdul" required autofocus autocomplete="name">
+          </div>
         </div>
-      </header>
 
-      <!-- Main Form Area -->
-      <main class="auth-content">
-        <h1 class="auth-heading">Hi there!</h1>
-        <p class="auth-subheading">Set up Huddle for your team.</p>
-
-        <form id="signupForm" class="auth-form" novalidate>
-          <!-- Name Field -->
-          <div class="form-group">
-            <label for="name" class="form-label">
-              Name <span class="asterisk">*</span>
-            </label>
-            <div class="input-wrapper">
-              <span class="input-icon-left">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-                </svg>
-              </span>
-              <input 
-                type="text" 
-                id="name" 
-                name="fullName" 
-                class="form-input" 
-                placeholder="Grace Abdul" 
-                required 
-                autofocus 
-                autocomplete="name"
-              >
-            </div>
+        <div class="form-group">
+          <label for="email" class="form-label">Email <span class="asterisk">*</span></label>
+          <div class="input-wrap">
+            <span class="input-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg></span>
+            <input type="email" id="email" name="email" class="form-input" placeholder="grace@teamname.com" required autocomplete="email">
           </div>
+        </div>
 
-          <!-- Email Field -->
-          <div class="form-group">
-            <label for="email" class="form-label">
-              Email <span class="asterisk">*</span>
-            </label>
-            <div class="input-wrapper">
-              <span class="input-icon-left">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-                </svg>
-              </span>
-              <input 
-                type="email" 
-                id="email" 
-                name="email" 
-                class="form-input" 
-                placeholder="grace@teamname.com" 
-                required 
-                autocomplete="email"
-              >
-            </div>
-          </div>
-
-          <!-- Password Field -->
-          <div class="form-group">
-            <label for="password" class="form-label">
-              Password <span class="asterisk">*</span>
-            </label>
-            <div class="input-wrapper">
-              <span class="input-icon-left">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                </svg>
-              </span>
-              <input 
-                type="password" 
-                id="password" 
-                name="password" 
-                class="form-input" 
-                placeholder="••••••••••••" 
-                required 
-                autocomplete="new-password"
-              >
-              <button 
-                type="button" 
-                class="input-icon-right" 
-                data-toggle="password" 
-                data-target="password" 
-                aria-label="Toggle password visibility"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                  <line x1="1" y1="1" x2="23" y2="23"></line>
-                </svg>
-              </button>
-            </div>
-
-            <!-- Password Requirements Dropdown Chips -->
-            <div class="password-requirements" id="passwordRequirements" aria-live="polite">
-              <div class="requirements-chips">
-                <span class="req-chip unmet" data-req="lower">
-                  <span class="req-icon">✕</span> 1 lowercase letter
-                </span>
-                <span class="req-chip unmet" data-req="number">
-                  <span class="req-icon">✕</span> 1 number
-                </span>
-                <span class="req-chip unmet" data-req="upper">
-                  <span class="req-icon">✕</span> 1 uppercase letter
-                </span>
-                <span class="req-chip unmet" data-req="special">
-                  <span class="req-icon">✕</span> 1 special character
-                </span>
-                <span class="req-chip unmet" data-req="length">
-                  <span class="req-icon">✕</span> At least 8 characters
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Submit Button (Centered Spinner on Loading matching screenshot) -->
-          <div class="form-actions">
-            <button type="submit" class="submit-btn" disabled id="continueBtn">
-              <span class="btn-spinner" aria-label="Loading..."></span>
-              <span class="btn-text">Continue</span>
+        <div class="form-group">
+          <label for="password" class="form-label">Password <span class="asterisk">*</span></label>
+          <div class="input-wrap">
+            <span class="input-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></span>
+            <input type="password" id="password" name="password" class="form-input" placeholder="••••••••••••" required autocomplete="new-password">
+            <button type="button" class="toggle-pw" data-toggle="password" data-target="password" aria-label="Toggle password visibility">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
             </button>
           </div>
+          <div class="password-requirements" id="passwordRequirements" aria-live="polite">
+            <div class="requirements-chips">
+              <span class="req-chip unmet" data-req="lower"><span class="req-icon">✕</span> 1 lowercase letter</span>
+              <span class="req-chip unmet" data-req="number"><span class="req-icon">✕</span> 1 number</span>
+              <span class="req-chip unmet" data-req="upper"><span class="req-icon">✕</span> 1 uppercase letter</span>
+              <span class="req-chip unmet" data-req="special"><span class="req-icon">✕</span> 1 special character</span>
+              <span class="req-chip unmet" data-req="length"><span class="req-icon">✕</span> At least 8 characters</span>
+            </div>
+          </div>
+        </div>
 
-          <!-- Already have an account link (Positioned directly under button) -->
-          <p class="auth-switch-text">
-            Already have an account? <a href="signin.html">Sign in</a>
-          </p>
-        </form>
-      </main>
-
-      <!-- Desktop Footer -->
-      <footer class="auth-footer">
-        2026. Huddle by Altschool Africa
-      </footer>
+        <div class="form-actions">
+          <button type="submit" class="submit-btn" disabled id="continueBtn">
+            <span class="btn-spinner" aria-label="Loading..."></span>
+            <span class="btn-text">Continue</span>
+          </button>
+        </div>
+        <p class="auth-switch-text">Already have an account? <a href="signin.html">Sign in</a></p>
+      </form>
     </div>
 
-    <!-- Right Column: Hero Image Card (Desktop Only) -->
-    <aside class="auth-right-pane" aria-label="Team preview">
-      <div class="hero-image-card">
-        <img 
-          src="images/side-image.jpg" 
-          alt="Two team members collaborating happily on a laptop in an office lounge"
-          loading="eager"
-        >
-      </div>
-    </aside>
+    <footer class="auth-footer">2026. Huddle by Altschool Africa</footer>
   </div>
+</div>
 
-  <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
+<script>
+// Ambient particles
+(function(){
+  for(var i=0;i<10;i++){
+    var p=document.createElement('div');
+    p.className='particle';
+    var sz=Math.random()*180+50;
+    p.setAttribute('data-particle','1');
+    p.style.cssText='width:'+sz+'px;height:'+sz+'px;left:'+(Math.random()*100)+'vw;bottom:-'+sz+'px;animation-duration:'+(Math.random()*14+8).toFixed(1)+'s;animation-delay:'+(Math.random()*6).toFixed(1)+'s;';
+    document.body.appendChild(p);
+  }
+})();
+</script>
+
+<script>
+(function(){
+  var logoWord   = document.getElementById('logoWord');
+  var splashLogo = document.getElementById('splash-logo');
+  var heroWrap   = document.getElementById('heroWrap');
+  var formPanel  = document.getElementById('form-panel');
+
+  // Calibrate dot roll distance
+  function calibrate(){
+    var dot=document.getElementById('splashDot');
+    var letters=logoWord.querySelectorAll('.letter');
+    if(!letters.length||!dot.offsetWidth)return;
+    var totalW=logoWord.getBoundingClientRect().width;
+    var r4=letters[3].getBoundingClientRect();
+    var wr=logoWord.getBoundingClientRect();
+    var endPx=r4.right-wr.left;
+    var finalPx=endPx+dot.offsetWidth*0.3;
+    logoWord.style.setProperty('--roll-end',Math.round((endPx+dot.offsetWidth)/totalW*100)+'%');
+    logoWord.style.setProperty('--dot-final',Math.round(finalPx/totalW*100)+'%');
+  }
+  requestAnimationFrame(calibrate);
+
+  // After logo animation (~3.2s): fade logo, morph image, slide form in
+  setTimeout(function(){
+    splashLogo.classList.add('hide');
+    setTimeout(function(){
+      splashLogo.style.display='none';
+      document.querySelectorAll('[data-particle]').forEach(function(p){p.remove();});
+      // Morph hero from fullscreen to right 50%
+      if(window.innerWidth>768){
+        heroWrap.classList.add('morph');
+        heroWrap.style.left='50%';
+        heroWrap.style.width='50%';
+      }
+      heroWrap.classList.add('settled');
+      // Slide form in
+      formPanel.classList.add('visible');
+    },500);
+  },3200);
+})();
+</script>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

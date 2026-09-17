@@ -47,10 +47,10 @@ async function bootstrap() {
     extensions: ['html'],
   });
 
-  // Redirect root URL to splash screen
+  // Redirect root URL to signup/splash (splash is embedded in index.html)
   app.use('/', (req: any, res: any, next: any) => {
     if (req.path === '/' && req.method === 'GET') {
-      return res.redirect('/splash.html');
+      return res.redirect('/index.html');
     }
     next();
   });
