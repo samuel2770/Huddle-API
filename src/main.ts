@@ -47,6 +47,14 @@ async function bootstrap() {
     extensions: ['html'],
   });
 
+  // Redirect root URL to splash screen
+  app.use('/', (req: any, res: any, next: any) => {
+    if (req.path === '/' && req.method === 'GET') {
+      return res.redirect('/splash.html');
+    }
+    next();
+  });
+
   // Serve uploaded images & files
   const rawUploadDir = process.env.LOCAL_UPLOAD_DIR || join(process.cwd(), 'uploads');
   const uploadDir = resolve(rawUploadDir);
